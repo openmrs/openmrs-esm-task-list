@@ -6,25 +6,17 @@
   },
   "extensions": [
     {
-      "name": "Red box",
-      "component": "redBox",
-      "slot": "Boxes"
-    },
-    {
-      "name": "Blue box",
-      "component": "blueBox",
-      "slot": "Boxes"
-    },
-        {
-      "name": "Brand box",
-      "component": "blueBox",
-      "slot": "Boxes"
+      "name": "task-list-launch-button",
+      "component": "taskListLaunchButton",
+      "slot": "action-menu-patient-chart-items-slot"
     }
   ],
-  "pages": [
+  "workspaces": [
     {
-      "component": "root",
-      "route": "root"
+      "name": "task-list",
+      "title": "Task List",
+      "component": "taskListWorkspace",
+      "type": "task-list"
     }
   ]
 }
