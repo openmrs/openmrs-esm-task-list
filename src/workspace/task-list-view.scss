@@ -1,0 +1,25 @@
+@use '@carbon/colors';
+@use '@carbon/layout';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.taskTile {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid $grey-2;
+
+  &:not(:last-of-type) {
+    margin-bottom: layout.$spacing-03;
+  }
+}
+
+.tabletTaskTile {
+  &:not(:last-of-type) {
+    margin-bottom: layout.$spacing-04;
+  }
+}
+
+.taskTileContent {
+  padding: layout.$spacing-03 layout.$spacing-05;
+}

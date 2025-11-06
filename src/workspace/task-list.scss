@@ -1,0 +1,8 @@
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.addTaskButtonContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $ui-02;
+}
