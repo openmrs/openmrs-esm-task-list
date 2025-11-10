@@ -1,5 +1,5 @@
 import useSWR from 'swr';
-import { fhirBaseUrl, openmrsFetch } from '@openmrs/esm-framework';
+import { restBaseUrl, openmrsFetch } from '@openmrs/esm-framework';
 import { useMemo } from 'react';
 
 export interface Task {
@@ -12,10 +12,10 @@ export interface FHIRCarePlanResponse {
     }>;
 }
 
-export function useTaskList(patientUuid: string) {
-    const { data, isLoading, error } = useSWR<{ data: FHIRCarePlanResponse }>(`${fhirBaseUrl}/CarePlan?subject=Patient/${patientUuid}`, openmrsFetch);
+const carePlanEndpoint = `${restBaseUrl}/tasks/careplan`;
 
-    console.log("data", data);
+export function useTaskList(patientUuid: string) {
+    const { data, isLoading, error } = useSWR<{ data: FHIRCarePlanResponse }>(`${carePlanEndpoint}?subject=Patient/${patientUuid}`, openmrsFetch);
     const results = useMemo(() => {
         return data?.data?.entry?.map((entry) => createTaskFromCarePlan(entry.resource));
     }, [data]);
@@ -35,7 +35,7 @@ export function saveTask(patientUuid: string, task: Task) {
 }
 
 function saveCarePlan(carePlan: fhir.CarePlan) {
-    const taskEndpoint = `${fhirBaseUrl}/CarePlan`;
+    const taskEndpoint = carePlanEndpoint;
     const abortController = new AbortController();
     return openmrsFetch(taskEndpoint, {
         headers: {
