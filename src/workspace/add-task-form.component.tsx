@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { Controller, FieldErrors, useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Form, Layer, TextInput } from '@carbon/react';
-import { showSnackbar, useLayoutType } from '@openmrs/esm-framework';
+import { Button, ButtonSet, ComboBox, Form, Layer, TextArea, TextInput } from '@carbon/react';
+import { showSnackbar, useLayoutType, restBaseUrl, openmrsFetch, isDesktop } from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
-import { saveTask } from './task-list.resource';
+import { saveTask, taskListSWRKey, type TaskInput } from './task-list.resource';
+import { useSWRConfig } from 'swr';
 
 export interface AddTaskFormProps {
     patientUuid: string;
@@ -17,18 +19,91 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
 
     const { t } = useTranslation();
 
+    const isTablet = !isDesktop(useLayoutType());
+
+    const optionSchema = z.object({
+        id: z.string(),
+        label: z.string().optional(),
+    });
+
+    const { mutate } = useSWRConfig();
+
     const schema = z.object({
         taskName: z.string().min(1),
+        dueDate: z.string().optional(),
+        rationale: z.string().optional(),
+        assignee: optionSchema.optional(),
+        assigneeRole: optionSchema.optional(),
+    }).refine(
+        (values) => !(values.assignee && values.assigneeRole),
+        { message: t('selectSingleAssignee', 'Select either a provider or a provider role, not both'), path: ['assigneeRole'] },
+    );
+
+    const { control, handleSubmit, setValue, formState: { errors } } = useForm<z.infer<typeof schema>>({
+        resolver: zodResolver(schema),
+        defaultValues: {
+            taskName: '',
+            dueDate: undefined,
+            rationale: '',
+            assignee: undefined,
+            assigneeRole: undefined,
+        },
     });
 
-    const { control, handleSubmit } = useForm<z.infer<typeof schema>>({
-        resolver: zodResolver(schema),
-    });
+    const [providerOptions, setProviderOptions] = useState<Array<SelectOption>>([]);
+    const [providerRoleOptions, setProviderRoleOptions] = useState<Array<SelectOption>>([]);
+
+    const providerSearchHelper = useMemo(() => t('providerSearchHint', 'Start typing to search for providers'), [t]);
+    const providerRoleSearchHelper = useMemo(() => t('providerRoleSearchHint', 'Start typing to search for provider roles'), [t]);
+
+    const fetchProviders = useCallback(async (query: string) => {
+        if (!query || query.length < 2) {
+            return;
+        }
+
+        try {
+            const response = await openmrsFetch<ProviderSearchResponse>(`${restBaseUrl}/provider?q=${encodeURIComponent(query)}&v=custom:(uuid,display)`);
+            const results = response?.data?.results ?? [];
+            setProviderOptions((current) => mergeOptions(current, results.map((result) => ({
+                id: result.uuid,
+                label: result.display,
+            }))));
+        }
+        catch {
+            return;
+        }
+    }, []);
+
+    const fetchProviderRoles = useCallback(async (query: string) => {
+        if (!query || query.length < 2) {
+            return;
+        }
+
+        try {
+            const response = await openmrsFetch<ProviderRoleSearchResponse>(`${restBaseUrl}/providerrole?q=${encodeURIComponent(query)}&v=custom:(uuid,name)`);
+            const results = response?.data?.results ?? [];
+            setProviderRoleOptions((current) => mergeOptions(current, results.map((result) => ({
+                id: result.uuid,
+                label: result.name,
+            }))));
+        }
+        catch {
+            return;
+        }
+    }, []);
 
     const handleFormSubmission = async (data: z.infer<typeof schema>) => {
-        console.log(data);
         try {
-          await saveTask(patientUuid, { name: data.taskName });
+          const payload: TaskInput = {
+            name: data.taskName.trim(),
+            dueDate: data.dueDate?.trim() || undefined,
+            rationale: data.rationale?.trim() || undefined,
+            assignee: data.assignee ? { uuid: data.assignee.id, display: data.assignee.label, type: 'person' } : undefined,
+            assigneeRole: data.assigneeRole ? { uuid: data.assigneeRole.id, display: data.assigneeRole.label, type: 'role' } : undefined,
+          };
+
+          await saveTask(patientUuid, payload);
+          await mutate(taskListSWRKey(patientUuid));
           showSnackbar({
             title: t("taskAdded", "Task added"),
             kind: 'success',
@@ -42,14 +117,12 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
         }
     };
 
-    const onError = (errors: FieldErrors<z.infer<typeof schema>>) => {
-        console.log(errors);
-    };
-
   return (
-    <div>
-      <h1>Add Task</h1>
-      <Form onSubmit={handleSubmit(handleFormSubmission, onError)}>
+    <>
+    <div className={styles.formContainer}>
+      <Form onSubmit={handleSubmit(handleFormSubmission)}>
+        <div className={styles.formSection}>
+        <h5 className={styles.formSectionHeader}>{t("task", "Task")}</h5>
         <InputWrapper>
         <Controller
           name="taskName"
@@ -59,14 +132,124 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
               id="taskName"
               labelText={t("taskNameLabel", "Task name")}
               placeholder={t("taskNamePlaceholder", "Enter task name")}
+              invalid={Boolean(errors.taskName)}
+              invalidText={errors.taskName?.message ? t("taskNameRequired", "Task name is required") : undefined}
               {...field}
             />
           )}
         />
         </InputWrapper>
-        <button type="submit">{t("addTaskButton", "Add Task")}</button>
+
+        <InputWrapper>
+          <Controller
+            name="dueDate"
+            control={control}
+            render={({ field }) => (
+              <TextInput
+                id="dueDate"
+                type="date"
+                labelText={t("dueDateLabel", "Due date")}
+                placeholder={t("dueDatePlaceholder", "Select a due date")}
+                {...field}
+              />
+            )}
+          />
+        </InputWrapper>
+
+        <InputWrapper>
+          <Controller
+            name="assignee"
+            control={control}
+            render={({ field }) => (
+              <ComboBox
+                id="assignee"
+                titleText={t("assignProviderLabel", "Assign to provider")}
+                placeholder={t("assignProviderPlaceholder", "Search providers")}
+                items={providerOptions}
+                itemToString={(item) => item?.label ?? ''}
+                selectedItem={field.value ?? null}
+                onChange={({ selectedItem }) => {
+                  field.onChange(selectedItem ?? undefined);
+                  if (selectedItem) {
+                    setValue('assigneeRole', undefined, { shouldDirty: true, shouldValidate: true });
+                  }
+                }}
+                onInputChange={(input) => fetchProviders(input)}
+                helperText={providerSearchHelper}
+                invalid={Boolean(errors.assignee)}
+                invalidText={errors.assignee?.message}
+              />
+            )}
+          />
+        </InputWrapper>
+
+        <InputWrapper>
+          <Controller
+            name="assigneeRole"
+            control={control}
+            render={({ field }) => (
+              <ComboBox
+                id="assigneeRole"
+                titleText={t("assignProviderRoleLabel", "Assign to provider role")}
+                placeholder={t("assignProviderRolePlaceholder", "Search provider roles")}
+                items={providerRoleOptions}
+                itemToString={(item) => item?.label ?? ''}
+                selectedItem={field.value ?? null}
+                onChange={({ selectedItem }) => {
+                  field.onChange(selectedItem ?? undefined);
+                  if (selectedItem) {
+                    setValue('assignee', undefined, { shouldDirty: true, shouldValidate: true });
+                  }
+                }}
+                onInputChange={(input) => fetchProviderRoles(input)}
+                helperText={providerRoleSearchHelper}
+                invalid={Boolean(errors.assigneeRole)}
+                invalidText={errors.assigneeRole?.message}
+              />
+            )}
+          />
+        </InputWrapper>
+        </div>
+
+        <div className={styles.formSection}>
+        <h5 className={styles.formSectionHeader}>{t("rationale", "Rationale")}</h5>
+        <InputWrapper>
+          <Controller
+            name="rationale"
+            control={control}
+            render={({ field }) => (
+              <TextArea
+                id="rationale"
+                labelText={t("rationaleLabel", "Explain briefly why this task is necessary (optional)")}
+                placeholder={t("rationalePlaceholder", "Add a note here")}
+                rows={4}
+                enableCounter
+                maxLength={100}
+                {...field}
+              />
+            )}
+          />
+        </InputWrapper>
+        </div>
+
       </Form>
     </div>
+              <ButtonSet                                                                                                                                                                                                                                           
+              className={styles.buttonSet}                                                                                                                                              
+            >                                                                                                                                                                                                                                                    
+              <Button className={styles.button} kind="secondary" onClick={goBackToListView} size="xl">                                                                                                                                                                   
+                {t('discard', 'Discard')}                                                                                                                                                                                                                        
+              </Button>                                                                                                                                                                                                                                          
+              <Button                                                                                                                                                                                                                                            
+                className={styles.button}                                                                                                                                                                                                                        
+                kind="primary"                                                                                                                                                                                                                                   
+                type="submit"                                                                                                                                                                                                                                    
+                size="xl"                                                                                                                                                                                                                                        
+              >                                                                                                                                                                                                                                                  
+                {t("addTaskButton", "Add Task")}                                                                                                                                                                                                                                 
+              </Button>                                                                                                                                                                                                                                          
+            </ButtonSet>
+            </>
   );
 };
 
@@ -80,3 +263,32 @@ function InputWrapper({ children }) {
   }      
 
 export default AddTaskForm;
+
+interface SelectOption {
+  id: string;
+  label?: string;
+}
+
+interface ProviderSearchResponse {
+  results: Array<{
+    uuid: string;
+    display: string;
+  }>;
+}
+
+interface ProviderRoleSearchResponse {
+  results: Array<{
+    uuid: string;
+    name: string;
+  }>;
+}
+
+function mergeOptions(current: Array<SelectOption>, incoming: Array<SelectOption>) {
+  const merged = [...current];
+  incoming.forEach((option) => {
+    if (!merged.find((existing) => existing.id === option.id)) {
+      merged.push(option);
+    }
+  });
+  return merged;
+}
