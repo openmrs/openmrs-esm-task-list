@@ -2,16 +2,29 @@
 @use '@carbon/layout';
 @use '@openmrs/esm-styleguide/src/vars' as *;
 
+.taskList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: layout.$spacing-03;
+}
+
+.helperText {
+  margin: layout.$spacing-05 0;
+  color: $interactive-01;
+}
+
+.errorText {
+  margin: layout.$spacing-05 0;
+}
+
 .taskTile {
   padding: 0;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   border: 1px solid $grey-2;
-
-  &:not(:last-of-type) {
-    margin-bottom: layout.$spacing-03;
-  }
 }
 
 .tabletTaskTile {
@@ -22,4 +35,65 @@
 
 .taskTileContent {
   padding: layout.$spacing-03 layout.$spacing-05;
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+}
+
+.completedTile {
+  opacity: 0.65;
+}
+
+.taskHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+}
+
+.checkboxWrapper {
+  :global(.cds--checkbox-label) {
+    font-weight: 600;
+  }
+}
+
+.completedCheckbox {
+  :global(.cds--checkbox-label) {
+    text-decoration: line-through;
+    color: $text-02;
+  }
+}
+
+.dueDate {
+  font-size: 0.875rem;
+  color: $text-02;
+  white-space: nowrap;
+}
+
+.taskBody {
+  display: grid;
+  gap: layout.$spacing-03;
+  color: $text-02;
+  font-size: 0.875rem;
+}
+
+.taskMeta {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: layout.$spacing-02;
+  row-gap: layout.$spacing-01;
+}
+
+.metaLabel {
+  font-weight: 600;
+}
+
+.taskRationale {
+  display: grid;
+  gap: layout.$spacing-02;
+
+  p {
+    margin: 0;
+    line-height: 1.4;
+  }
 }
