@@ -7,19 +7,21 @@ import { z } from 'zod';
 import { Button, ButtonSet, ComboBox, Form, Layer, TextArea, TextInput } from '@carbon/react';
 import { showSnackbar, useLayoutType, restBaseUrl, openmrsFetch, isDesktop } from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
-import { saveTask, taskListSWRKey, type TaskInput } from './task-list.resource';
+import { SelectOption, useProviderRoles, saveTask, taskListSWRKey, type TaskInput, useFetchProviders } from './task-list.resource';
 import { useSWRConfig } from 'swr';
 
 export interface AddTaskFormProps {
     patientUuid: string;
-    goBackToListView: () => void;
+    onBack: () => void;
 }
 
-const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView }) => {
+const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
 
     const { t } = useTranslation();
 
     const isTablet = !isDesktop(useLayoutType());
+
+    const { providers, setProviderQuery, isLoading, error } = useFetchProviders();
 
     const optionSchema = z.object({
         id: z.string(),
@@ -50,47 +52,14 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
         },
     });
 
-    const [providerOptions, setProviderOptions] = useState<Array<SelectOption>>([]);
-    const [providerRoleOptions, setProviderRoleOptions] = useState<Array<SelectOption>>([]);
+    const providerOptions = useMemo(() => providers.map((provider) => ({
+        id: provider.uuid,
+        label: provider.display,
+    })), [providers]);
+    const providerRoleOptions = useProviderRoles();
 
     const providerSearchHelper = useMemo(() => t('providerSearchHint', 'Start typing to search for providers'), [t]);
     const providerRoleSearchHelper = useMemo(() => t('providerRoleSearchHint', 'Start typing to search for provider roles'), [t]);
-
-    const fetchProviders = useCallback(async (query: string) => {
-        if (!query || query.length < 2) {
-            return;
-        }
-
-        try {
-            const response = await openmrsFetch<ProviderSearchResponse>(`${restBaseUrl}/provider?q=${encodeURIComponent(query)}&v=custom:(uuid,display)`);
-            const results = response?.data?.results ?? [];
-            setProviderOptions((current) => mergeOptions(current, results.map((result) => ({
-                id: result.uuid,
-                label: result.display,
-            }))));
-        }
-        catch {
-            return;
-        }
-    }, []);
-
-    const fetchProviderRoles = useCallback(async (query: string) => {
-        if (!query || query.length < 2) {
-            return;
-        }
-
-        try {
-            const response = await openmrsFetch<ProviderRoleSearchResponse>(`${restBaseUrl}/providerrole?q=${encodeURIComponent(query)}&v=custom:(uuid,name)`);
-            const results = response?.data?.results ?? [];
-            setProviderRoleOptions((current) => mergeOptions(current, results.map((result) => ({
-                id: result.uuid,
-                label: result.name,
-            }))));
-        }
-        catch {
-            return;
-        }
-    }, []);
 
     const handleFormSubmission = async (data: z.infer<typeof schema>) => {
         try {
@@ -108,7 +77,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
             title: t("taskAdded", "Task added"),
             kind: 'success',
           })
-          goBackToListView();
+          onBack();
         } catch (error) {
           showSnackbar({
             title: t("taskAddFailed", "Task add failed"),
@@ -174,7 +143,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
                     setValue('assigneeRole', undefined, { shouldDirty: true, shouldValidate: true });
                   }
                 }}
-                onInputChange={(input) => fetchProviders(input)}
+                onInputChange={(input) => setProviderQuery(input)}
                 helperText={providerSearchHelper}
                 invalid={Boolean(errors.assignee)}
                 invalidText={errors.assignee?.message}
@@ -201,7 +170,6 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
                     setValue('assignee', undefined, { shouldDirty: true, shouldValidate: true });
                   }
                 }}
-                onInputChange={(input) => fetchProviderRoles(input)}
                 helperText={providerRoleSearchHelper}
                 invalid={Boolean(errors.assigneeRole)}
                 invalidText={errors.assigneeRole?.message}
@@ -237,14 +205,14 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, goBackToListView
               <ButtonSet                                                                                                                                                                                                                                           
               className={styles.buttonSet}                                                                                                                                              
             >                                                                                                                                                                                                                                                    
-              <Button className={styles.button} kind="secondary" onClick={goBackToListView} size="xl">                                                                                                                                                                   
+              <Button className={styles.button} kind="secondary" onClick={onBack} size="xl">                                                                                                                                                                   
                 {t('discard', 'Discard')}                                                                                                                                                                                                                        
               </Button>                                                                                                                                                                                                                                          
               <Button                                                                                                                                                                                                                                            
                 className={styles.button}                                                                                                                                                                                                                        
                 kind="primary"                                                                                                                                                                                                                                   
-                type="submit"                                                                                                                                                                                                                                    
-                size="xl"                                                                                                                                                                                                                                        
+                size="xl" 
+                onClick={handleSubmit(handleFormSubmission)}                                                                                                                                                                                                                                       
               >                                                                                                                                                                                                                                                  
                 {t("addTaskButton", "Add Task")}                                                                                                                                                                                                                                 
               </Button>                                                                                                                                                                                                                                          
@@ -264,31 +232,3 @@ function InputWrapper({ children }) {
 
 export default AddTaskForm;
 
-interface SelectOption {
-  id: string;
-  label?: string;
-}
-
-interface ProviderSearchResponse {
-  results: Array<{
-    uuid: string;
-    display: string;
-  }>;
-}
-
-interface ProviderRoleSearchResponse {
-  results: Array<{
-    uuid: string;
-    name: string;
-  }>;
-}
-
-function mergeOptions(current: Array<SelectOption>, incoming: Array<SelectOption>) {
-  const merged = [...current];
-  incoming.forEach((option) => {
-    if (!merged.find((existing) => existing.id === option.id)) {
-      merged.push(option);
-    }
-  });
-  return merged;
-}

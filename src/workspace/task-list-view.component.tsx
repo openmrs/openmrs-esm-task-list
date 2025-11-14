@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import classNames from 'classnames';
-import { Checkbox, Tile } from '@carbon/react';
+import { Checkbox, Tile, Tag } from '@carbon/react';
 import { formatDate, parseDate, showSnackbar, useLayoutType } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { type Task, useTaskList, toggleTaskCompletion } from './task-list.resource';
@@ -8,9 +8,10 @@ import styles from './task-list-view.scss';
 
 export interface TaskListViewProps {
   patientUuid: string;
+  onTaskClick?: (task: Task) => void;
 }
 
-const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid }) => {
+const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick }) => {
   const { t } = useTranslation();
   const { tasks, isLoading, error, mutate } = useTaskList(patientUuid);
   const isTablet = useLayoutType() === 'tablet';
@@ -50,6 +51,21 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid }) => {
     [addPendingUpdate, mutate, patientUuid, removePendingUpdate, t],
   );
 
+
+  const isOverdue = useCallback((task: Task) => {
+    if (task.completed || !task.dueDate) {
+      return false;
+    }
+    const dueDate = parseDate(task.dueDate);
+    if (!dueDate) {
+      return false;
+    }
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    dueDate.setHours(0, 0, 0, 0);
+    return dueDate < now;
+  }, []);
+
   if (isLoading) {
     return <p className={styles.helperText}>{t('loadingTasks', 'Loading tasks...')}</p>;
   }
@@ -66,9 +82,10 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid }) => {
     <ul className={styles.taskList}>
       {tasks.map((task) => {
         const isUpdating = pendingUpdates.has(task.uuid);
-        const dueDateDisplay = task.dueDate
-          ? formatDate(parseDate(task.dueDate))
-          : null;
+        const overdue = isOverdue(task);
+        const assigneeDisplay = task.assignee 
+          ? (task.assignee.display ?? task.assignee.uuid)
+          : t('noAssignment', 'No assignment');
 
         return (
           <li key={task.uuid}>
@@ -80,7 +97,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid }) => {
               })}
             >
               <div className={styles.taskTileContent}>
-                <div className={styles.taskHeader}>
+                <div className={styles.taskTileLeft}>
                   <div
                     className={classNames(styles.checkboxWrapper, {
                       [styles.completedCheckbox]: task.completed,
@@ -88,36 +105,40 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid }) => {
                   >
                     <Checkbox
                       id={`task-${task.uuid}`}
-                      labelText={task.name}
+                      labelText=""
                       checked={task.completed}
                       disabled={isUpdating}
                       onChange={(_, { checked }) => handleToggle(task, checked)}
                     />
                   </div>
-                  {dueDateDisplay && (
-                    <span className={styles.dueDate}>
-                      {t('dueLabel', 'Due')} {dueDateDisplay}
-                    </span>
-                  )}
+                  <div className={styles.taskNameWrapper}>
+                    {onTaskClick ? (
+                      <button
+                        type="button"
+                        className={styles.taskNameButton}
+                        onClick={() => onTaskClick(task)}
+                        disabled={isUpdating}
+                      >
+                        {task.name}
+                      </button>
+                    ) : (
+                      <span className={styles.taskName}>{task.name}</span>
+                    )}
+                    {task.rationale && (
+                      <div className={styles.taskRationalePreview}>
+                        {task.rationale}
+                      </div>
+                    )}
+                    <div className={styles.taskAssignee}>
+                      {assigneeDisplay}
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.taskBody}>
-                  {task.assignee && (
-                    <div className={styles.taskMeta}>
-                      <span className={styles.metaLabel}>{t('assignedToLabel', 'Assigned to')}</span>
-                      <span>{task.assignee.display ?? task.assignee.uuid}</span>
-                    </div>
-                  )}
-                  {task.assignee && task.assignee.type === 'role' && (
-                    <div className={styles.taskMeta}>
-                      <span className={styles.metaLabel}>{t('assignedRoleLabel', 'Assigned role')}</span>
-                      <span>{task.assignee.display ?? task.assignee.uuid}</span>
-                    </div>
-                  )}
-                  {task.rationale && (
-                    <div className={styles.taskRationale}>
-                      <span className={styles.metaLabel}>{t('rationaleLabel', 'Rationale')}</span>
-                      <p>{task.rationale}</p>
-                    </div>
+                <div className={styles.taskTileRight}>
+                  {overdue && (
+                    <Tag type="red" size="sm">
+                      {t('overdue', 'Overdue')}
+                    </Tag>
                   )}
                 </div>
               </div>

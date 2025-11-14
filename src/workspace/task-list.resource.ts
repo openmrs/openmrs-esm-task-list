@@ -1,6 +1,9 @@
+import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { restBaseUrl, openmrsFetch, parseDate } from '@openmrs/esm-framework';
-import { useMemo } from 'react';
+import useSWRImmutable from 'swr/immutable';
+import { type FetchResponse, openmrsFetch, restBaseUrl, useOpenmrsSWR, parseDate, useDebounce } from "@openmrs/esm-framework";
+
+
 
 export interface Assignee {
   uuid: string;
@@ -31,6 +34,27 @@ export interface FHIRCarePlanResponse {
     resource: fhir.CarePlan;
   }>;
 }
+
+export interface SelectOption {
+    id: string;
+    label?: string;
+}
+  
+
+export interface ProviderSearchResponse {
+    results: Array<{
+      uuid: string;
+      display: string;
+    }>;
+  }
+  
+export interface ProviderRoleSearchResponse {
+    results: Array<{
+        uuid: string;
+        name: string;
+    }>;
+}
+
 
 const carePlanEndpoint = `${restBaseUrl}/tasks/careplan`;
 
@@ -95,6 +119,30 @@ export function toggleTaskCompletion(patientUuid: string, task: Task, completed:
     ...task,
     completed,
     status,
+  });
+}
+
+export function taskSWRKey(taskUuid: string) {
+  return `${carePlanEndpoint}/${taskUuid}`;
+}
+
+export function useTask(taskUuid: string) {
+  const swrKey = taskSWRKey(taskUuid);
+  const { data, isLoading, error, mutate } = useSWR<{ data: fhir.CarePlan }>(swrKey, openmrsFetch);
+
+  const task = useMemo(() => {
+    if (!data?.data) {
+      return null;
+    }
+    return createTaskFromCarePlan(data.data);
+  }, [data]);
+
+  return { task, isLoading, error, mutate };
+}
+
+export function deleteTask(taskUuid: string) {
+  return openmrsFetch(`${carePlanEndpoint}/${taskUuid}`, {
+    method: 'DELETE',
   });
 }
 
@@ -242,4 +290,29 @@ function extractDueDate(detail?: fhir.CarePlanActivityDetail): string | null {
   }
 
   return null;
+}
+
+export function useFetchProviders() {
+  const [query, setQuery] = useState<string>('');
+  const debouncedQuery = useDebounce(query, 300);
+  const url = debouncedQuery.length < 2 ? null : `${restBaseUrl}/provider?q=${encodeURIComponent(debouncedQuery)}&v=custom:(uuid,display)`;
+  const { data, isLoading, error } = useSWR<FetchResponse<ProviderSearchResponse>>(url, openmrsFetch);
+
+  return {
+    providers: data?.data?.results ?? [],
+    setProviderQuery: setQuery,
+    isLoading,
+    error,
+  };
+}
+
+
+export function useProviderRoles() {
+  const response = useSWRImmutable<FetchResponse<ProviderRoleSearchResponse>>(`${restBaseUrl}/providerrole?v=custom:(uuid,name)`, openmrsFetch);
+  console.log("useProviderRoles", response)
+  const results = response?.data?.data?.results ?? [];
+  return results.map((result) => ({
+      id: result.uuid,
+      label: result.name,
+  }));
 }

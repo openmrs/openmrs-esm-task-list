@@ -1,0 +1,111 @@
+@use '@carbon/layout';
+@use '@carbon/colors';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.taskDetailsContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.taskDetailsContent {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-06;
+  flex: 1;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.editButton {
+  padding: 0;
+}
+
+.sectionContent {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+}
+
+.detailRow {
+  display: flex;
+  gap: layout.$spacing-03;
+  align-items: flex-start;
+}
+
+.detailLabel {
+  font-weight: 600;
+  min-width: 120px;
+  flex-shrink: 0;
+}
+
+.detailValue {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+  color: $text-02;
+}
+
+.detailValueName {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-02;
+  color: $interactive-01;
+}
+
+.infoIcon {
+  fill: $text-02;
+}
+
+.rationaleText {
+  margin: 0;
+  line-height: 1.5;
+  color: $text-02;
+}
+
+.actionButtons {
+  display: flex;
+  gap: layout.$spacing-03;
+  margin-top: auto;
+  padding-top: layout.$spacing-05;
+}
+
+.deleteButton {
+  border-color: $danger;
+  color: $danger;
+  
+  &:hover {
+    background-color: $danger;
+  }
+}
+
+.completeButton {
+  // Match design - dark gray button
+}
+
+.helperText {
+  margin: layout.$spacing-05 0;
+  color: $interactive-01;
+}
+
+.errorText {
+  margin: layout.$spacing-05 0;
+  color: $danger;
+}
+

@@ -3,11 +3,9 @@
 @use '@openmrs/esm-styleguide/src/vars' as *;
 
 .taskList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
+  padding: layout.$spacing-03;
   display: grid;
-  gap: layout.$spacing-03;
+  gap: layout.$spacing-02;
 }
 
 .helperText {
@@ -21,9 +19,6 @@
 
 .taskTile {
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
   border: 1px solid $grey-2;
 }
 
@@ -36,7 +31,7 @@
 .taskTileContent {
   padding: layout.$spacing-03 layout.$spacing-05;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: layout.$spacing-04;
 }
 
@@ -44,11 +39,64 @@
   opacity: 0.65;
 }
 
-.taskHeader {
+
+.taskTileLeft {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: layout.$spacing-04;
+  gap: layout.$spacing-03;
+  flex: 1;
+  min-width: 0;
+}
+
+.taskTileRight {
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+
+.taskNameWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-02;
+  flex: 1;
+  min-width: 0;
+}
+
+.taskNameButton {
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: $interactive-01;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  
+  &:hover {
+    text-decoration: underline;
+  }
+  
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+}
+
+.taskName {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: $interactive-01;
+}
+
+.taskRationalePreview {
+  font-size: 0.875rem;
+  color: $text-02;
+  line-height: 1.4;
+}
+
+.taskAssignee {
+  font-size: 0.875rem;
+  color: $text-02;
 }
 
 .checkboxWrapper {
