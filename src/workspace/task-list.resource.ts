@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import useSWRImmutable from 'swr/immutable';
-import { type FetchResponse, openmrsFetch, restBaseUrl, useOpenmrsSWR, parseDate, useDebounce } from "@openmrs/esm-framework";
-
-
+import {
+  type FetchResponse,
+  openmrsFetch,
+  restBaseUrl,
+  useOpenmrsSWR,
+  parseDate,
+  useDebounce,
+} from '@openmrs/esm-framework';
 
 export interface Assignee {
   uuid: string;
@@ -26,7 +31,6 @@ export interface TaskInput {
   dueDate?: string;
   rationale?: string;
   assignee?: Assignee;
-  assigneeRole?: Assignee;
 }
 
 export interface FHIRCarePlanResponse {
@@ -36,25 +40,23 @@ export interface FHIRCarePlanResponse {
 }
 
 export interface SelectOption {
-    id: string;
-    label?: string;
+  id: string;
+  label?: string;
 }
-  
 
 export interface ProviderSearchResponse {
-    results: Array<{
-      uuid: string;
-      display: string;
-    }>;
-  }
-  
-export interface ProviderRoleSearchResponse {
-    results: Array<{
-        uuid: string;
-        name: string;
-    }>;
+  results: Array<{
+    uuid: string;
+    display: string;
+  }>;
 }
 
+export interface ProviderRoleSearchResponse {
+  results: Array<{
+    uuid: string;
+    name: string;
+  }>;
+}
 
 const carePlanEndpoint = `${restBaseUrl}/tasks/careplan`;
 
@@ -147,6 +149,7 @@ export function deleteTask(taskUuid: string) {
 }
 
 function createTaskFromCarePlan(carePlan: fhir.CarePlan): Task {
+  console.log('createTaskFromCarePlan', carePlan);
   const activity = carePlan?.activity?.[0];
   const detail = activity?.detail;
 
@@ -234,10 +237,9 @@ function buildCarePlan(patientUuid: string, task: Partial<Task> & Pick<Task, 'na
   return carePlan;
 }
 
-function parseAssignment(performer: fhir.Reference):
-  | { type: 'provider'; value: Assignee }
-  | { type: 'providerRole'; value: Assignee }
-  | undefined {
+function parseAssignment(
+  performer: fhir.Reference,
+): { type: 'provider'; value: Assignee } | { type: 'providerRole'; value: Assignee } | undefined {
   if (!performer) {
     return undefined;
   }
@@ -295,7 +297,10 @@ function extractDueDate(detail?: fhir.CarePlanActivityDetail): string | null {
 export function useFetchProviders() {
   const [query, setQuery] = useState<string>('');
   const debouncedQuery = useDebounce(query, 300);
-  const url = debouncedQuery.length < 2 ? null : `${restBaseUrl}/provider?q=${encodeURIComponent(debouncedQuery)}&v=custom:(uuid,display)`;
+  const url =
+    debouncedQuery.length < 2
+      ? null
+      : `${restBaseUrl}/provider?q=${encodeURIComponent(debouncedQuery)}&v=custom:(uuid,display)`;
   const { data, isLoading, error } = useSWR<FetchResponse<ProviderSearchResponse>>(url, openmrsFetch);
 
   return {
@@ -306,13 +311,15 @@ export function useFetchProviders() {
   };
 }
 
-
 export function useProviderRoles() {
-  const response = useSWRImmutable<FetchResponse<ProviderRoleSearchResponse>>(`${restBaseUrl}/providerrole?v=custom:(uuid,name)`, openmrsFetch);
-  console.log("useProviderRoles", response)
+  const response = useSWRImmutable<FetchResponse<ProviderRoleSearchResponse>>(
+    `${restBaseUrl}/providerrole?v=custom:(uuid,name)`,
+    openmrsFetch,
+  );
+  console.log('useProviderRoles', response);
   const results = response?.data?.data?.results ?? [];
   return results.map((result) => ({
-      id: result.uuid,
-      label: result.name,
+    id: result.uuid,
+    label: result.name,
   }));
 }

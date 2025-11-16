@@ -1,10 +1,12 @@
 import React, { useCallback, useState } from 'react';
 import classNames from 'classnames';
-import { Checkbox, Tile, Tag } from '@carbon/react';
+import { Checkbox, Tile, Tag, Loading, InlineLoading, Layer } from '@carbon/react';
 import { formatDate, parseDate, showSnackbar, useLayoutType } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { type Task, useTaskList, toggleTaskCompletion } from './task-list.resource';
 import styles from './task-list-view.scss';
+import { EmptyDataIllustration, EmptyState } from '@openmrs/esm-patient-common-lib';
+import Loader from '../loader/loader.component';
 
 export interface TaskListViewProps {
   patientUuid: string;
@@ -51,7 +53,6 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
     [addPendingUpdate, mutate, patientUuid, removePendingUpdate, t],
   );
 
-
   const isOverdue = useCallback((task: Task) => {
     if (task.completed || !task.dueDate) {
       return false;
@@ -67,7 +68,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
   }, []);
 
   if (isLoading) {
-    return <p className={styles.helperText}>{t('loadingTasks', 'Loading tasks...')}</p>;
+    return <Loader />;
   }
 
   if (error) {
@@ -75,7 +76,16 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
   }
 
   if (!tasks || tasks.length === 0) {
-    return <p className={styles.helperText}>{t('noTasksMessage', 'No tasks yet')}</p>;
+    return (
+      <Layer>
+        <Tile className={styles.emptyStateTile}>
+          <div className={styles.emptyStateTileContent}>
+            <EmptyDataIllustration />
+            <p className={styles.emptyStateContent}>{t('noTasksMessage', 'No tasks to display')}</p>
+          </div>
+        </Tile>
+      </Layer>
+    );
   }
 
   return (
@@ -83,7 +93,8 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
       {tasks.map((task) => {
         const isUpdating = pendingUpdates.has(task.uuid);
         const overdue = isOverdue(task);
-        const assigneeDisplay = task.assignee 
+        console.log('assignee', task.assignee);
+        const assigneeDisplay = task.assignee
           ? (task.assignee.display ?? task.assignee.uuid)
           : t('noAssignment', 'No assignment');
 
@@ -124,14 +135,8 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
                     ) : (
                       <span className={styles.taskName}>{task.name}</span>
                     )}
-                    {task.rationale && (
-                      <div className={styles.taskRationalePreview}>
-                        {task.rationale}
-                      </div>
-                    )}
-                    <div className={styles.taskAssignee}>
-                      {assigneeDisplay}
-                    </div>
+                    {task.rationale && <div className={styles.taskRationalePreview}>{task.rationale}</div>}
+                    <div className={styles.taskAssignee}>{assigneeDisplay}</div>
                   </div>
                 </div>
                 <div className={styles.taskTileRight}>
