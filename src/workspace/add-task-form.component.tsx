@@ -5,7 +5,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button, ButtonSet, ComboBox, Form, Layer, TextArea, TextInput } from '@carbon/react';
-import { showSnackbar, useLayoutType, restBaseUrl, openmrsFetch, isDesktop, useConfig } from '@openmrs/esm-framework';
+import { showSnackbar, useLayoutType, restBaseUrl, openmrsFetch, isDesktop, useConfig, parseDate } from '@openmrs/esm-framework';
 import type { FetchResponse } from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
 import {
@@ -114,9 +114,11 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
 
       const payload: TaskInput = {
         name: data.taskName.trim(),
-        dueDateType: data.dueDateType,
-        dueDate: data.dueDate?.trim() || undefined,
-        visitUuid,
+        dueDate: {
+          type: data.dueDateType,
+          date: parseDate(data.dueDate),
+          referenceVisitUuid: visitUuid,
+        },
         rationale: data.rationale?.trim() || undefined,
         assignee: data.assignee
           ? { uuid: data.assignee.id, display: data.assignee.label, type: 'person' }

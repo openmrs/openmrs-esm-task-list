@@ -10,6 +10,7 @@ import {
   useDebounce,
   useConfig,
 } from '@openmrs/esm-framework';
+import { CarePlan } from '../types';
 
 export interface Assignee {
   uuid: string;
@@ -23,27 +24,39 @@ export interface Task {
   uuid: string;
   name: string;
   status?: string;
-  dueDate?: string;
-  dueDateType?: DueDateType;
-  visitUuid?: string;
+  dueDate?: TaskDueDate;
+  createdDate: Date;
   rationale?: string;
   assignee?: Assignee;
   createdBy?: string;
   completed: boolean;
 }
 
+export type TaskDueDate = TaskDueDateDate | TaskDueDateVisit;
+
+
+export type TaskDueDateDate = {
+  type: 'DATE'
+  date: Date;
+};
+
+export type TaskDueDateVisit = {
+  type: 'THIS_VISIT' | 'NEXT_VISIT';
+  referenceVisitUuid?: string;
+  date?: Date;
+};
+
+
 export interface TaskInput {
   name: string;
-  dueDate?: string;
-  dueDateType?: DueDateType;
-  visitUuid?: string;
+  dueDate?: TaskDueDate;
   rationale?: string;
   assignee?: Assignee;
 }
 
 export interface FHIRCarePlanResponse {
   entry: Array<{
-    resource: fhir.CarePlan;
+    resource: CarePlan;
   }>;
 }
 
@@ -86,8 +99,8 @@ export function useTaskList(patientUuid: string) {
         return a.completed ? 1 : -1;
       }
 
-      const aDue = parseDate(a.dueDate)?.getTime() ?? 0;
-      const bDue = parseDate(b.dueDate)?.getTime() ?? 0;
+      const aDue = a.dueDate?.date?.getTime() ?? 0;
+      const bDue = b.dueDate?.date?.getTime() ?? 0;
 
       return aDue - bDue;
     });
@@ -97,7 +110,7 @@ export function useTaskList(patientUuid: string) {
 }
 
 export function saveTask(patientUuid: string, task: TaskInput) {
-  const carePlan = buildCarePlan(patientUuid, task, task.visitUuid);
+  const carePlan = buildCarePlan(patientUuid, task);
 
   return openmrsFetch(carePlanEndpoint, {
     headers: {
@@ -132,7 +145,7 @@ export function toggleTaskCompletion(patientUuid: string, task: Task, completed:
 
 export function useTask(taskUuid: string) {
   const swrKey = `${carePlanEndpoint}/${taskUuid}`;
-  const { data, isLoading, error, mutate } = useSWR<{ data: fhir.CarePlan }>(swrKey, openmrsFetch);
+  const { data, isLoading, error, mutate } = useSWR<{ data: CarePlan }>(swrKey, openmrsFetch);
 
   const task = useMemo(() => {
     if (!data?.data) {
@@ -151,7 +164,7 @@ export function deleteTask(patientUuid: string, task: Task) {
   });
 }
 
-function createTaskFromCarePlan(carePlan: fhir.CarePlan): Task {
+function createTaskFromCarePlan(carePlan: CarePlan): Task {
   console.log('createTaskFromCarePlan', carePlan);
   const activity = carePlan?.activity?.[0];
   const detail = activity?.detail;
@@ -160,17 +173,20 @@ function createTaskFromCarePlan(carePlan: fhir.CarePlan): Task {
 
   const performers = detail?.performer ?? [];
   const { dueDate, dueDateType } = extractDueDate(detail);
-  const createdBy = (carePlan?.author as fhir.Reference)?.display;
+  const createdBy = carePlan?.author?.display;
 
   const task: Task = {
     uuid: carePlan.id ?? '',
     name: detail?.description ?? '',
     status,
-    dueDate,
-    dueDateType,
+    createdDate: parseDate(carePlan.created),
+    dueDate: {
+      type: dueDateType as 'DATE' | 'THIS_VISIT' | 'NEXT_VISIT',
+      date: dueDate,
+    },
     rationale: carePlan.description ?? undefined,
     createdBy,
-    completed: (status ?? '').toLowerCase() === 'completed',
+    completed: status === 'completed',
   };
 
   performers.forEach((performer) => {
@@ -189,7 +205,7 @@ function createTaskFromCarePlan(carePlan: fhir.CarePlan): Task {
   return task;
 }
 
-function buildCarePlan(patientUuid: string, task: Partial<Task> & Pick<Task, 'name'>, visitUuid?: string) {
+function buildCarePlan(patientUuid: string, task: Partial<Task>) {
   const performer: Array<fhir.Reference> = [];
 
   if (task.assignee?.uuid) {
@@ -215,33 +231,42 @@ function buildCarePlan(patientUuid: string, task: Partial<Task> & Pick<Task, 'na
     detail.performer = performer;
   }
 
-  // Handle due date based on type
-  if (task.dueDateType === 'THIS_VISIT' || task.dueDateType === 'NEXT_VISIT') {
-    detail.scheduledString = task.dueDateType === 'THIS_VISIT' ? 'this visit' : 'next visit';
+  // Handle due date: always use scheduledPeriod, add activity-dueKind extension
+  detail.extension = detail.extension || [];
+  
+  if (task.dueDate?.type === 'THIS_VISIT' || task.dueDate?.type === 'NEXT_VISIT') {
+    // Visit-based types: use scheduledPeriod (end date set server-side if visit ended)
+    detail.scheduledPeriod = {};
+    
+    // Add activity-dueKind extension
+    detail.extension.push({
+      url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
+      valueCode: task.dueDate?.type === 'THIS_VISIT' ? 'this-visit' : 'next-visit',
+    });
 
     // Add encounter extension if visit UUID is provided
-    if (visitUuid) {
-      detail.extension = detail.extension || [];
+    if (task.dueDate?.referenceVisitUuid) {
       detail.extension.push({
         url: 'http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter',
         valueReference: {
-          reference: `Encounter/${visitUuid}`,
+          reference: `Encounter/${task.dueDate.referenceVisitUuid}`,
         },
       });
     }
-  } else if (task.dueDateType === 'DATE' && task.dueDate) {
-    // Use scheduledPeriod for actual dates
+  } else if (task.dueDate?.type === 'DATE' && task.dueDate?.date) {
+    // DATE type: end = specific date
     detail.scheduledPeriod = {
-      end: task.dueDate,
+      end: task.dueDate.date.toISOString(),
     };
-  } else if (task.dueDate) {
-    // Fallback for backward compatibility: if no type is set but date exists, treat as DATE
-    detail.scheduledPeriod = {
-      end: task.dueDate,
-    };
+    
+    // Add activity-dueKind extension
+    detail.extension.push({
+      url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
+      valueCode: 'date',
+    });
   }
 
-  const carePlan: fhir.CarePlan = {
+  const carePlan: CarePlan = {
     resourceType: 'CarePlan',
     status: task.completed ? 'completed' : 'active',
     intent: 'plan',
@@ -300,35 +325,55 @@ function parseAssignment(
 }
 
 function extractDueDate(detail?: fhir.CarePlanActivityDetail): {
-  dueDate?: string;
+  dueDate?: Date;
+  dueDateCreatedDate?: Date;
   dueDateType?: DueDateType;
 } {
+  if (!detail) {
+    return {};
+  }
 
-  // Check for scheduledString (visit-based due dates)
-  if (detail.scheduledString) {
-    let dueDateType: DueDateType | undefined;
+  // Read due date type from activity-dueKind extension
+  let dueDateType: DueDateType | undefined;
+  let visitUuid: string | undefined;
 
-    if (detail.scheduledString === 'this visit') {
-      dueDateType = 'THIS_VISIT';
-    } else if (detail.scheduledString === 'next visit') {
-      dueDateType = 'NEXT_VISIT';
+  if (detail.extension) {
+    for (const ext of detail.extension) {
+      if (ext.url === 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind') {
+        const value = (ext as any).valueCode || (ext as any).valueString;
+        if (value === 'this-visit') {
+          dueDateType = 'THIS_VISIT';
+        } else if (value === 'next-visit') {
+          dueDateType = 'NEXT_VISIT';
+        } else if (value === 'date') {
+          dueDateType = 'DATE';
+        }
+      } else if (ext.url === 'http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter') {
+        const ref = (ext as any).valueReference?.reference;
+        if (ref && ref.startsWith('Encounter/')) {
+          visitUuid = ref.substring('Encounter/'.length);
+        }
+      }
     }
-
-    return {
-      dueDate: null,
-      dueDateType,
-    };
   }
 
-  // Check for scheduledPeriod (actual date)
+  // Read due date from scheduledPeriod.end (always present if date is known)
+  let dueDate: string | undefined;
   if (detail.scheduledPeriod?.end) {
-    return {
-      dueDate: detail.scheduledPeriod.end,
-      dueDateType: 'DATE',
-    };
+    dueDate = detail.scheduledPeriod.end;
+    // If no dueKind extension was found but we have an end date, assume DATE type
+    if (!dueDateType) {
+      dueDateType = 'DATE';
+    }
   }
 
-  return {};
+  // For visit-based types, dueDate will be null/undefined if visit hasn't ended
+  // For DATE type, dueDate will contain the actual date
+
+  return {
+    dueDate: dueDate ? parseDate(dueDate) : undefined,
+    dueDateType,
+  };
 }
 
 export function useFetchProviders() {

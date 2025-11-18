@@ -57,7 +57,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
     if (task.completed || !task.dueDate) {
       return false;
     }
-    const dueDate = parseDate(task.dueDate);
+    const dueDate = task.dueDate.date;
     if (!dueDate) {
       return false;
     }

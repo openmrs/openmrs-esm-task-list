@@ -1,18 +1,25 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Button, ButtonSet, Layer } from '@carbon/react';
-import { formatDate, parseDate, showSnackbar } from '@openmrs/esm-framework';
+import { formatDate, isOmrsDateToday, parseDate, showSnackbar } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Edit, Information } from '@carbon/react/icons';
 import { useTask, deleteTask, toggleTaskCompletion, taskListSWRKey, type Task } from './task-list.resource';
 import { useSWRConfig } from 'swr';
 import styles from './task-details-view.scss';
 import Loader from '../loader/loader.component';
+import { DueDateType } from './task-list.resource';
 
 export interface TaskDetailsViewProps {
   patientUuid: string;
   taskUuid: string;
   onBack: () => void;
   onEdit?: (task: Task) => void;
+}
+
+export interface DueDateDisplay {
+  type?: DueDateType;
+  dueDate?: string;
+  schedulingInfo?: string;
 }
 
 const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid, onBack, onEdit }) => {
@@ -71,24 +78,32 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
     }
   }, [task, patientUuid, mutate, mutateList, t]);
 
-  const dueDateDisplay = useMemo(() => {
+  const dueDateDisplay: DueDateDisplay = useMemo(() => {
     if (!task) {
-      return null;
+      return {};
     }
-    if (!task.dueDateType) {
-      return null;
+    const scheduledToday = isOmrsDateToday(task.createdDate)
+    if (task.dueDate?.type === 'DATE') {
+      return {
+        type: 'DATE',
+        dueDate: formatDate(task.dueDate.date, { mode: 'wide' }),
+      };
     }
-    if (task.dueDateType === 'DATE') {
-      return formatDate(parseDate(task.dueDate), { mode: 'wide' });
+    if (task.dueDate?.type === 'THIS_VISIT') {
+      return {
+        type: 'THIS_VISIT',
+        schedulingInfo: scheduledToday ? t('scheduledTodayForThisVisit', 'Today for this visit') : t('scheduledOnThisVisit', 'On {{date}} for the same visit', { date: formatDate(task.createdDate, { mode: 'wide' })}),
+        dueDate: task.dueDate.date ? formatDate(task.dueDate.date, { mode: 'wide' }) : undefined
+      };
     }
-    // TODO: Right now we don't have a reasonable way to display the due date for this
-    // visit or next visit. This will require some design discussion.
-    if (task.dueDateType === 'THIS_VISIT') {
-      return t('thisVisit', 'This visit');
+    if (task.dueDate?.type === 'NEXT_VISIT') {
+      return {
+        type: 'NEXT_VISIT',
+        schedulingInfo: scheduledToday ? t('scheduledTodayForNextVisit', 'Today for next visit') : t('scheduledOnNextVisit', 'On {{date}} for the following visit', { date: formatDate(task.createdDate, { mode: 'wide' })}),
+        dueDate: task.dueDate.date ? formatDate(task.dueDate.date, { mode: 'wide' }) : undefined
+      };
     }
-    if (task.dueDateType === 'NEXT_VISIT') {
-      return t('nextVisit', 'Next visit');
-    }
+    return {};
   }, [task, t]);
 
   const assigneeDisplay = task?.assignee 
@@ -142,10 +157,16 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
               <div className={styles.detailLabel}>{t('assignedTo', 'Assigned to')}</div>
               <div>{assigneeDisplay}</div>
             </div>
-            {dueDateDisplay && (
+            {dueDateDisplay.type != 'DATE' && dueDateDisplay.schedulingInfo && (
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>{t('scheduledInfo', 'Scheduled')}</div>
+                <div>{dueDateDisplay.schedulingInfo}</div>
+              </div>
+            )}
+            {dueDateDisplay.dueDate && (
               <div className={styles.detailRow}>
                 <div className={styles.detailLabel}>{t('dueDate', 'Due date')}</div>
-                <div>{dueDateDisplay}</div>
+                <div>{dueDateDisplay.dueDate}</div>
               </div>
             )}
           </div>
