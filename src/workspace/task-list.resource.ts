@@ -10,7 +10,7 @@ import {
   useDebounce,
   useConfig,
 } from '@openmrs/esm-framework';
-import { CarePlan } from '../types';
+import { type CarePlan } from '../types';
 
 export interface Assignee {
   uuid: string;
@@ -34,9 +34,8 @@ export interface Task {
 
 export type TaskDueDate = TaskDueDateDate | TaskDueDateVisit;
 
-
 export type TaskDueDateDate = {
-  type: 'DATE'
+  type: 'DATE';
   date: Date;
 };
 
@@ -45,7 +44,6 @@ export type TaskDueDateVisit = {
   referenceVisitUuid?: string;
   date?: Date;
 };
-
 
 export interface TaskInput {
   name: string;
@@ -165,7 +163,6 @@ export function deleteTask(patientUuid: string, task: Task) {
 }
 
 function createTaskFromCarePlan(carePlan: CarePlan): Task {
-  console.log('createTaskFromCarePlan', carePlan);
   const activity = carePlan?.activity?.[0];
   const detail = activity?.detail;
 
@@ -233,11 +230,11 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
 
   // Handle due date: always use scheduledPeriod, add activity-dueKind extension
   detail.extension = detail.extension || [];
-  
+
   if (task.dueDate?.type === 'THIS_VISIT' || task.dueDate?.type === 'NEXT_VISIT') {
     // Visit-based types: use scheduledPeriod (end date set server-side if visit ended)
     detail.scheduledPeriod = {};
-    
+
     // Add activity-dueKind extension
     detail.extension.push({
       url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
@@ -258,7 +255,7 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
     detail.scheduledPeriod = {
       end: task.dueDate.date.toISOString(),
     };
-    
+
     // Add activity-dueKind extension
     detail.extension.push({
       url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
@@ -397,7 +394,6 @@ export function useProviderRoles() {
   const { allowAssigningProviderRole } = useConfig();
   const url = allowAssigningProviderRole ? `${restBaseUrl}/providerrole?v=custom:(uuid,name)` : null;
   const response = useSWRImmutable<FetchResponse<ProviderRoleSearchResponse>>(url, openmrsFetch);
-  console.log('useProviderRoles', response);
   const results = response?.data?.data?.results ?? [];
   return results.map((result) => ({
     id: result.uuid,

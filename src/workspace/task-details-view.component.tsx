@@ -7,7 +7,7 @@ import { useTask, deleteTask, toggleTaskCompletion, taskListSWRKey, type Task } 
 import { useSWRConfig } from 'swr';
 import styles from './task-details-view.scss';
 import Loader from '../loader/loader.component';
-import { DueDateType } from './task-list.resource';
+import { type DueDateType } from './task-list.resource';
 
 export interface TaskDetailsViewProps {
   patientUuid: string;
@@ -54,35 +54,40 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
     }
   }, [task, mutateList, patientUuid, onBack, t]);
 
-  const handleToggleCompletion = useCallback(async (completed: boolean) => {
-    if (!task) {
-      return;
-    }
+  const handleToggleCompletion = useCallback(
+    async (completed: boolean) => {
+      if (!task) {
+        return;
+      }
 
-    setIsUpdating(true);
-    try {
-      await toggleTaskCompletion(patientUuid, task, completed);
-      await mutate();
-      await mutateList(taskListSWRKey(patientUuid));
-      showSnackbar({
-        title: completed ? t('taskCompleted', 'Task marked as complete') : t('taskIncomplete', 'Task marked as incomplete'),
-        kind: 'success',
-      });
-    } catch (_error) {
-      showSnackbar({
-        title: t('taskUpdateFailed', 'Unable to update task'),
-        kind: 'error',
-      });
-    } finally {
-      setIsUpdating(false);
-    }
-  }, [task, patientUuid, mutate, mutateList, t]);
+      setIsUpdating(true);
+      try {
+        await toggleTaskCompletion(patientUuid, task, completed);
+        await mutate();
+        await mutateList(taskListSWRKey(patientUuid));
+        showSnackbar({
+          title: completed
+            ? t('taskCompleted', 'Task marked as complete')
+            : t('taskIncomplete', 'Task marked as incomplete'),
+          kind: 'success',
+        });
+      } catch (_error) {
+        showSnackbar({
+          title: t('taskUpdateFailed', 'Unable to update task'),
+          kind: 'error',
+        });
+      } finally {
+        setIsUpdating(false);
+      }
+    },
+    [task, patientUuid, mutate, mutateList, t],
+  );
 
   const dueDateDisplay: DueDateDisplay = useMemo(() => {
     if (!task) {
       return {};
     }
-    const scheduledToday = isOmrsDateToday(task.createdDate)
+    const scheduledToday = isOmrsDateToday(task.createdDate);
     if (task.dueDate?.type === 'DATE') {
       return {
         type: 'DATE',
@@ -92,39 +97,46 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
     if (task.dueDate?.type === 'THIS_VISIT') {
       return {
         type: 'THIS_VISIT',
-        schedulingInfo: scheduledToday ? t('scheduledTodayForThisVisit', 'Today for this visit') : t('scheduledOnThisVisit', 'On {{date}} for the same visit', { date: formatDate(task.createdDate, { mode: 'wide' })}),
-        dueDate: task.dueDate.date ? formatDate(task.dueDate.date, { mode: 'wide' }) : undefined
+        schedulingInfo: scheduledToday
+          ? t('scheduledTodayForThisVisit', 'Today for this visit')
+          : t('scheduledOnThisVisit', 'On {{date}} for the same visit', {
+              date: formatDate(task.createdDate, { mode: 'wide' }),
+            }),
+        dueDate: task.dueDate.date ? formatDate(task.dueDate.date, { mode: 'wide' }) : undefined,
       };
     }
     if (task.dueDate?.type === 'NEXT_VISIT') {
       return {
         type: 'NEXT_VISIT',
-        schedulingInfo: scheduledToday ? t('scheduledTodayForNextVisit', 'Today for next visit') : t('scheduledOnNextVisit', 'On {{date}} for the following visit', { date: formatDate(task.createdDate, { mode: 'wide' })}),
-        dueDate: task.dueDate.date ? formatDate(task.dueDate.date, { mode: 'wide' }) : undefined
+        schedulingInfo: scheduledToday
+          ? t('scheduledTodayForNextVisit', 'Today for next visit')
+          : t('scheduledOnNextVisit', 'On {{date}} for the following visit', {
+              date: formatDate(task.createdDate, { mode: 'wide' }),
+            }),
+        dueDate: task.dueDate.date ? formatDate(task.dueDate.date, { mode: 'wide' }) : undefined,
       };
     }
     return {};
   }, [task, t]);
 
-  const assigneeDisplay = task?.assignee 
+  const assigneeDisplay = task?.assignee
     ? (task.assignee.display ?? task.assignee.uuid)
     : t('noAssignment', 'No assignment');
 
-  
-    if (isLoading) {
-      return <Loader />;
-    }
-  
-    if (error || !task) {
-      return (
-        <>
-          <p className={styles.errorText}>{t('taskLoadError', 'There was a problem loading the task.')}</p>
-          <Button kind="ghost" renderIcon={(props) => <ArrowLeft size={16} {...props} />} onClick={onBack}>
-            {t('backToTaskList', 'Back to task list')}
-          </Button>
-        </>
-      );
-    }
+  if (isLoading) {
+    return <Loader />;
+  }
+
+  if (error || !task) {
+    return (
+      <>
+        <p className={styles.errorText}>{t('taskLoadError', 'There was a problem loading the task.')}</p>
+        <Button kind="ghost" renderIcon={(props) => <ArrowLeft size={16} {...props} />} onClick={onBack}>
+          {t('backToTaskList', 'Back to task list')}
+        </Button>
+      </>
+    );
+  }
 
   return (
     <div className={styles.taskDetailsContainer}>
@@ -182,34 +194,21 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
         )}
       </Layer>
       <ButtonSet className={styles.actionButtons}>
-        <Button
-          kind="danger--tertiary"
-          onClick={handleDelete}
-          disabled={isDeleting}
-        >
+        <Button kind="danger--tertiary" onClick={handleDelete} disabled={isDeleting}>
           {t('deleteTask', 'Delete task')}
         </Button>
         {!task.completed ? (
-          <Button
-            kind="secondary"
-            onClick={() => handleToggleCompletion(true)}
-            disabled={isUpdating}
-          >
+          <Button kind="secondary" onClick={() => handleToggleCompletion(true)} disabled={isUpdating}>
             {t('markComplete', 'Mark complete')}
           </Button>
-        ):
-        <Button
-          kind="tertiary"
-          onClick={() => handleToggleCompletion(false)}
-          disabled={isUpdating}
-        >
-          {t('markIncomplete', 'Mark incomplete')}
-        </Button>
-        }
+        ) : (
+          <Button kind="tertiary" onClick={() => handleToggleCompletion(false)} disabled={isUpdating}>
+            {t('markIncomplete', 'Mark incomplete')}
+          </Button>
+        )}
       </ButtonSet>
     </div>
   );
 };
 
 export default TaskDetailsView;
-
