@@ -228,20 +228,20 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
     detail.performer = performer;
   }
 
-  // Handle due date: always use scheduledPeriod, add activity-dueKind extension
+  // Handle due date. Due date is stored as scheduledPeriod. The type of visit is stored
+  // using an activity-dueKind extension. For visit-based due dates, the visit UUID is stored in an
+  // encounter-associatedEncounter extension.
   detail.extension = detail.extension || [];
 
   if (task.dueDate?.type === 'THIS_VISIT' || task.dueDate?.type === 'NEXT_VISIT') {
     // Visit-based types: use scheduledPeriod (end date set server-side if visit ended)
     detail.scheduledPeriod = {};
 
-    // Add activity-dueKind extension
     detail.extension.push({
       url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
       valueCode: task.dueDate?.type === 'THIS_VISIT' ? 'this-visit' : 'next-visit',
     });
 
-    // Add encounter extension if visit UUID is provided
     if (task.dueDate?.referenceVisitUuid) {
       detail.extension.push({
         url: 'http://hl7.org/fhir/StructureDefinition/encounter-associatedEncounter',
@@ -251,12 +251,10 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
       });
     }
   } else if (task.dueDate?.type === 'DATE' && task.dueDate?.date) {
-    // DATE type: end = specific date
     detail.scheduledPeriod = {
       end: task.dueDate.date.toISOString(),
     };
 
-    // Add activity-dueKind extension
     detail.extension.push({
       url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
       valueCode: 'date',

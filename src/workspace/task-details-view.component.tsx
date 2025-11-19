@@ -88,7 +88,6 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
       return {};
     }
     const scheduledToday = isOmrsDateToday(task.createdDate);
-    console.log(task.name, 'task.createdDate', task.createdDate, 'isToday', scheduledToday);
     if (task.dueDate?.type === 'DATE') {
       return {
         type: 'DATE',
