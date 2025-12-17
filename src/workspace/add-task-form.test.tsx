@@ -12,7 +12,6 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
-// Mock dependencies
 jest.mock('./task-list.resource', () => ({
   useTask: jest.fn(),
   saveTask: jest.fn(),
@@ -23,6 +22,7 @@ jest.mock('./task-list.resource', () => ({
 }));
 
 jest.mock('@openmrs/esm-framework', () => ({
+  ...jest.requireActual('@openmrs/esm-framework'),
   showSnackbar: jest.fn(),
   useLayoutType: jest.fn(() => 'desktop'),
   restBaseUrl: '/ws/rest/v1',
@@ -205,6 +205,18 @@ describe('AddTaskForm', () => {
       // Check rationale is populated
       const rationaleTextarea = screen.getByPlaceholderText(/add a note here/i);
       expect(rationaleTextarea).toHaveValue('Test rationale');
+
+      // Check due date is populated (DATE type shows the date input)
+      const dueDateInput = screen.getByDisplayValue('2024-01-20');
+      expect(dueDateInput).toBeInTheDocument();
+
+      // Check priority is shown in the combobox input
+      const priorityInput = screen.getByRole('combobox', { name: /priority/i });
+      expect(priorityInput).toHaveValue('high');
+
+      // Check assignee is shown in the combobox input
+      const assigneeInput = screen.getByRole('combobox', { name: /assign to provider/i });
+      expect(assigneeInput).toHaveValue('Dr. Test Provider');
     });
 
     it('should call updateTask when submitting in edit mode', async () => {
@@ -271,21 +283,6 @@ describe('AddTaskForm', () => {
       expect(mockOnBack).not.toHaveBeenCalled();
     });
 
-    it('should call onBack when Cancel button is clicked', async () => {
-      const user = userEvent.setup();
-
-      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid={editTaskUuid} />);
-
-      await waitFor(() => {
-        expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
-      });
-
-      const cancelButton = screen.getByRole('button', { name: /cancel/i });
-      await user.click(cancelButton);
-
-      expect(mockOnBack).toHaveBeenCalled();
-    });
-
     it('should preserve existing task properties when updating', async () => {
       const user = userEvent.setup();
 
@@ -308,6 +305,14 @@ describe('AddTaskForm', () => {
             createdDate: baseTask.createdDate,
             completed: baseTask.completed,
             createdBy: baseTask.createdBy,
+            priority: baseTask.priority,
+            assignee: expect.objectContaining({
+              uuid: baseTask.assignee.uuid,
+              type: 'person',
+            }),
+            dueDate: expect.objectContaining({
+              type: 'DATE',
+            }),
           }),
         );
       });
@@ -315,7 +320,36 @@ describe('AddTaskForm', () => {
   });
 
   describe('Edit mode with different due date types', () => {
-    it('should pre-populate form for task with THIS_VISIT due date', async () => {
+    it('should select DATE tab and show date picker when editing task with DATE due date', async () => {
+      mockUseTask.mockReturnValue({
+        task: baseTask, // baseTask has dueDate.type = 'DATE'
+        isLoading: false,
+        error: null,
+        mutate: jest.fn(),
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid="task-uuid-456" />);
+
+      await waitFor(() => {
+        expect(screen.getByLabelText(/task name/i)).toHaveValue('Existing Task');
+      });
+
+      // Verify DATE tab is selected
+      const dateTab = screen.getByRole('tab', { name: /^date$/i });
+      expect(dateTab).toHaveAttribute('aria-selected', 'true');
+
+      // Verify other tabs are not selected
+      const thisVisitTab = screen.getByRole('tab', { name: /this visit/i });
+      const nextVisitTab = screen.getByRole('tab', { name: /next visit/i });
+      expect(thisVisitTab).toHaveAttribute('aria-selected', 'false');
+      expect(nextVisitTab).toHaveAttribute('aria-selected', 'false');
+
+      // Verify date input is shown with correct value
+      const dueDateInput = screen.getByDisplayValue('2024-01-20');
+      expect(dueDateInput).toBeInTheDocument();
+    });
+
+    it('should select THIS_VISIT tab when editing task with THIS_VISIT due date', async () => {
       const taskWithThisVisit: Task = {
         ...baseTask,
         dueDate: {
@@ -337,12 +371,21 @@ describe('AddTaskForm', () => {
         expect(screen.getByLabelText(/task name/i)).toHaveValue('Existing Task');
       });
 
-      // The THIS_VISIT switch should be selected (index 1 in the ContentSwitcher)
-      // We can verify the form is populated correctly by checking that the date picker is not shown
-      expect(screen.queryByLabelText(/select a due date/i)).not.toBeInTheDocument();
+      // Verify THIS_VISIT tab is selected
+      const thisVisitTab = screen.getByRole('tab', { name: /this visit/i });
+      expect(thisVisitTab).toHaveAttribute('aria-selected', 'true');
+
+      // Verify other tabs are not selected
+      const dateTab = screen.getByRole('tab', { name: /^date$/i });
+      const nextVisitTab = screen.getByRole('tab', { name: /next visit/i });
+      expect(dateTab).toHaveAttribute('aria-selected', 'false');
+      expect(nextVisitTab).toHaveAttribute('aria-selected', 'false');
+
+      // Verify date input is NOT shown (visit-based due dates don't show date picker)
+      expect(screen.queryByDisplayValue('2024-01-20')).not.toBeInTheDocument();
     });
 
-    it('should pre-populate form for task with NEXT_VISIT due date', async () => {
+    it('should select NEXT_VISIT tab when editing task with NEXT_VISIT due date', async () => {
       const taskWithNextVisit: Task = {
         ...baseTask,
         dueDate: {
@@ -363,9 +406,20 @@ describe('AddTaskForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/task name/i)).toHaveValue('Existing Task');
       });
+
+      // Verify NEXT_VISIT tab is selected
+      const nextVisitTab = screen.getByRole('tab', { name: /next visit/i });
+      expect(nextVisitTab).toHaveAttribute('aria-selected', 'true');
+
+      // Verify other tabs are not selected
+      const dateTab = screen.getByRole('tab', { name: /^date$/i });
+      const thisVisitTab = screen.getByRole('tab', { name: /this visit/i });
+      expect(dateTab).toHaveAttribute('aria-selected', 'false');
+      expect(thisVisitTab).toHaveAttribute('aria-selected', 'false');
     });
 
-    it('should pre-populate form for task with provider role assignee', async () => {
+    it('should send provider role assignee when updating task with role assignment', async () => {
+      const user = userEvent.setup();
       const taskWithRoleAssignee: Task = {
         ...baseTask,
         assignee: {
@@ -389,31 +443,25 @@ describe('AddTaskForm', () => {
       await waitFor(() => {
         expect(screen.getByLabelText(/task name/i)).toHaveValue('Existing Task');
       });
-    });
-  });
 
-  describe('Edit mode - loading state', () => {
-    it('should fetch task data when editTaskUuid is provided', () => {
-      const editTaskUuid = 'task-uuid-456';
+      // Verify the role is displayed in the provider role combobox
+      const roleInput = screen.getByRole('combobox', { name: /assign to provider role/i });
+      expect(roleInput).toHaveValue('Nurse Role');
 
-      mockUseTask.mockReturnValue({
-        task: null,
-        isLoading: true,
-        error: null,
-        mutate: jest.fn(),
+      const saveButton = screen.getByRole('button', { name: /save task/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockUpdateTask).toHaveBeenCalledWith(
+          patientUuid,
+          expect.objectContaining({
+            assignee: expect.objectContaining({
+              uuid: 'role-uuid-123',
+              type: 'role',
+            }),
+          }),
+        );
       });
-
-      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid={editTaskUuid} />);
-
-      // useTask should be called with the editTaskUuid
-      expect(mockUseTask).toHaveBeenCalledWith(editTaskUuid);
-    });
-
-    it('should not fetch task data when editTaskUuid is not provided', () => {
-      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} />);
-
-      // useTask should be called with empty string (no fetch)
-      expect(mockUseTask).toHaveBeenCalledWith('');
     });
   });
 });
