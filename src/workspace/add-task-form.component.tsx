@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,27 +15,42 @@ import {
   TextArea,
   TextInput,
 } from '@carbon/react';
-import { showSnackbar, useLayoutType, useConfig, parseDate, useVisit, OpenmrsDatePicker } from '@openmrs/esm-framework';
+import {
+  showSnackbar,
+  useLayoutType,
+  useConfig,
+  parseDate,
+  useVisit,
+  OpenmrsDatePicker,
+  getCoreTranslation,
+} from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
 import {
   useProviderRoles,
   saveTask,
+  updateTask,
   taskListSWRKey,
   getPriorityLabel,
   type TaskInput,
   type Priority,
+  type Task,
   useFetchProviders,
   useReferenceVisit,
+  useTask,
 } from './task-list.resource';
 import { useSWRConfig } from 'swr';
 
 export interface AddTaskFormProps {
   patientUuid: string;
   onBack: () => void;
+  editTaskUuid?: string;
 }
 
-const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
+const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTaskUuid }) => {
   const { t } = useTranslation();
+  const isEditMode = Boolean(editTaskUuid);
+
+  const { task: existingTask, isLoading: isTaskLoading } = useTask(editTaskUuid ?? '');
 
   const { activeVisit, isLoading: isVisitLoading } = useVisit(patientUuid);
 
@@ -74,6 +89,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -87,6 +103,32 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
       priority: undefined,
     },
   });
+
+  // Populate form with existing task data when editing
+  useEffect(() => {
+    if (isEditMode && existingTask) {
+      const formattedDueDate =
+        existingTask.dueDate?.type === 'DATE' && existingTask.dueDate?.date
+          ? existingTask.dueDate.date.toISOString().split('T')[0]
+          : undefined;
+
+      reset({
+        taskName: existingTask.name,
+        dueDateType: existingTask.dueDate?.type,
+        dueDate: formattedDueDate,
+        rationale: existingTask.rationale ?? '',
+        assignee:
+          existingTask.assignee?.type === 'person'
+            ? { id: existingTask.assignee.uuid, label: existingTask.assignee.display }
+            : undefined,
+        assigneeRole:
+          existingTask.assignee?.type === 'role'
+            ? { id: existingTask.assignee.uuid, label: existingTask.assignee.display }
+            : undefined,
+        priority: existingTask.priority,
+      });
+    }
+  }, [isEditMode, existingTask, reset]);
 
   const selectedDueDateType = watch('dueDateType');
 
@@ -117,32 +159,56 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
         visitUuid = referenceVisitData?.results?.[0]?.uuid;
       }
 
-      const payload: TaskInput = {
-        name: data.taskName.trim(),
-        dueDate: {
-          type: data.dueDateType,
-          date: parseDate(data.dueDate),
-          referenceVisitUuid: visitUuid,
-        },
-        rationale: data.rationale?.trim() || undefined,
-        assignee: data.assignee
-          ? { uuid: data.assignee.id, display: data.assignee.label, type: 'person' }
-          : data.assigneeRole
-            ? { uuid: data.assigneeRole.id, display: data.assigneeRole.label, type: 'role' }
-            : undefined,
-        priority: data.priority,
-      };
+      const assignee = data.assignee
+        ? { uuid: data.assignee.id, display: data.assignee.label, type: 'person' as const }
+        : data.assigneeRole
+          ? { uuid: data.assigneeRole.id, display: data.assigneeRole.label, type: 'role' as const }
+          : undefined;
 
-      await saveTask(patientUuid, payload);
-      await mutate(taskListSWRKey(patientUuid));
-      showSnackbar({
-        title: t('taskAdded', 'Task added'),
-        kind: 'success',
-      });
+      if (isEditMode && existingTask) {
+        const updatedTask: Task = {
+          ...existingTask,
+          name: data.taskName.trim(),
+          dueDate: {
+            type: data.dueDateType,
+            date: parseDate(data.dueDate),
+            referenceVisitUuid: visitUuid,
+          },
+          rationale: data.rationale?.trim() || undefined,
+          assignee,
+          priority: data.priority,
+        };
+
+        await updateTask(patientUuid, updatedTask);
+        await mutate(taskListSWRKey(patientUuid));
+        showSnackbar({
+          title: t('taskUpdated', 'Task updated'),
+          kind: 'success',
+        });
+      } else {
+        const payload: TaskInput = {
+          name: data.taskName.trim(),
+          dueDate: {
+            type: data.dueDateType,
+            date: parseDate(data.dueDate),
+            referenceVisitUuid: visitUuid,
+          },
+          rationale: data.rationale?.trim() || undefined,
+          assignee,
+          priority: data.priority,
+        };
+
+        await saveTask(patientUuid, payload);
+        await mutate(taskListSWRKey(patientUuid));
+        showSnackbar({
+          title: t('taskAdded', 'Task added'),
+          kind: 'success',
+        });
+      }
       onBack();
     } catch (error) {
       showSnackbar({
-        title: t('taskAddFailed', 'Task add failed'),
+        title: isEditMode ? t('taskUpdateFailed', 'Unable to update task') : t('taskAddFailed', 'Task add failed'),
         kind: 'error',
       });
     }
@@ -343,10 +409,10 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
       </div>
       <ButtonSet className={styles.bottomButtons}>
         <Button className={styles.button} kind="secondary" onClick={onBack} size="xl">
-          {t('discard', 'Discard')}
+          {isEditMode ? getCoreTranslation('cancel') : t('discard', 'Discard')}
         </Button>
         <Button className={styles.button} kind="primary" size="xl" onClick={handleSubmit(handleFormSubmission)}>
-          {t('addTaskButton', 'Add Task')}
+          {isEditMode ? t('saveTask', 'Save task') : t('addTaskButton', 'Add Task')}
         </Button>
       </ButtonSet>
     </>
