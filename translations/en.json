@@ -14,7 +14,6 @@
   "dueDatePlaceholder": "Select a due date",
   "dueDateRequired": "Due date is required when Date is selected",
   "dueLabel": "Due",
-  "edit": "Edit",
   "loading": "Loading",
   "markComplete": "Mark complete",
   "markIncomplete": "Mark incomplete",
@@ -33,6 +32,7 @@
   "rationale": "Rationale",
   "rationaleLabel": "Explain briefly why this task is necessary (optional)",
   "rationalePlaceholder": "Add a note here",
+  "saveTask": "Save task",
   "scheduledInfo": "Scheduled",
   "scheduledOnNextVisit": "On {{date}} for the following visit",
   "scheduledOnThisVisit": "On {{date}} for the same visit",
@@ -50,6 +50,7 @@
   "taskNameLabel": "Task name",
   "taskNamePlaceholder": "Enter task name",
   "taskNameRequired": "Task name is required",
+  "taskUpdated": "Task updated",
   "taskUpdateFailed": "Unable to update task",
   "thisVisit": "This visit"
 }
