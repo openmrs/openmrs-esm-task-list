@@ -3,6 +3,6 @@
  * See https://r4.fhir.space/careplan.html
  */
 export interface CarePlan extends fhir.CarePlan {
-    created?: fhir.dateTime;
-    author?: fhir.Reference;
+  created?: fhir.dateTime;
+  author?: fhir.Reference;
 }

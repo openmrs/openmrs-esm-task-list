@@ -15,7 +15,7 @@ const TaskListWorkspace: React.FC<DefaultPatientWorkspaceProps> = ({ patientUuid
   const { t } = useTranslation();
   const [view, setView] = useState<View>('list');
   const [selectedTaskUuid, setSelectedTaskUuid] = useState<string | null>(null);
-  
+
   const handleTaskClick = (task: Task) => {
     setSelectedTaskUuid(task.uuid);
     setView('details');
@@ -25,27 +25,37 @@ const TaskListWorkspace: React.FC<DefaultPatientWorkspaceProps> = ({ patientUuid
     setView('list');
     setSelectedTaskUuid(null);
   };
-  
+
   return (
     <div className={styles.workspaceContainer}>
-      {['form', 'details'].includes(view) && <div className={styles.backToTaskListButton}>
-        <Button kind="ghost" renderIcon={(props) => <ArrowLeft size={16} {...props} />} iconDescription={t('backToTaskList', 'Back to task list')} onClick={() => setView('list')}>
-        <span>{t('backToTaskList', 'Back to task list')}</span>
-        </Button>
-        </div>}
+      {['form', 'details'].includes(view) && (
+        <div className={styles.backToTaskListButton}>
+          <Button
+            kind="ghost"
+            renderIcon={(props) => <ArrowLeft size={16} {...props} />}
+            iconDescription={t('backToTaskList', 'Back to task list')}
+            onClick={() => setView('list')}
+          >
+            <span>{t('backToTaskList', 'Back to task list')}</span>
+          </Button>
+        </div>
+      )}
       {view === 'form' && <AddTaskForm patientUuid={patientUuid} onBack={() => setView('list')} />}
       {view === 'list' && <TaskListView patientUuid={patientUuid} onTaskClick={handleTaskClick} />}
-      {view === 'list' && <div className={styles.addTaskButtonContainer}>
-        <Button kind="ghost" 
-              renderIcon={(props) => <Add size={16} {...props} />}
-              iconDescription={t('addTask', 'Add Task')}
-                   onClick={() => setView('form')}>{t('addTask', 'Add Task')}</Button></div>}
+      {view === 'list' && (
+        <div className={styles.addTaskButtonContainer}>
+          <Button
+            kind="ghost"
+            renderIcon={(props) => <Add size={16} {...props} />}
+            iconDescription={t('addTask', 'Add Task')}
+            onClick={() => setView('form')}
+          >
+            {t('addTask', 'Add Task')}
+          </Button>
+        </div>
+      )}
       {view === 'details' && selectedTaskUuid && (
-        <TaskDetailsView
-          patientUuid={patientUuid}
-          taskUuid={selectedTaskUuid}
-          onBack={handleBackToList}
-        />
+        <TaskDetailsView patientUuid={patientUuid} taskUuid={selectedTaskUuid} onBack={handleBackToList} />
       )}
     </div>
   );
