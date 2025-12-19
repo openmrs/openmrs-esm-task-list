@@ -15,7 +15,7 @@ import {
   TextArea,
   TextInput,
 } from '@carbon/react';
-import { showSnackbar, useLayoutType, useConfig, parseDate, useVisit } from '@openmrs/esm-framework';
+import { showSnackbar, useLayoutType, useConfig, parseDate, useVisit, OpenmrsDatePicker } from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
 import {
   useProviderRoles,
@@ -213,14 +213,14 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
                     name="dueDate"
                     control={control}
                     render={({ field }) => (
-                      <TextInput
+                      <OpenmrsDatePicker
                         id="dueDate"
-                        type="date"
-                        labelText=""
-                        placeholder={t('dueDatePlaceholder', 'Select a due date')}
+                        labelText={t('dueDateLabel', 'Due date')}
+                        minDate={new Date()}
                         invalid={Boolean(errors.dueDate)}
                         invalidText={errors.dueDate?.message}
-                        {...field}
+                        value={field.value ? new Date(field.value) : undefined}
+                        onChange={(date: Date) => field.onChange(date?.toISOString())}
                       />
                     )}
                   />
@@ -274,7 +274,6 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
                           setValue('assignee', undefined, { shouldDirty: true, shouldValidate: true });
                         }
                       }}
-                      helperText={providerRoleSearchHelper}
                       invalid={Boolean(errors.assigneeRole)}
                       invalidText={errors.assigneeRole?.message}
                     />

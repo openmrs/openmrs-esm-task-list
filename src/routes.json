@@ -11,6 +11,12 @@
       "slot": "action-menu-patient-chart-items-slot"
     }
   ],
+  "modals": [
+    {
+      "name": "delete-task-confirmation-modal",
+      "component": "deleteTaskConfirmationModal"
+    }
+  ],
   "workspaces": [
     {
       "name": "task-list",

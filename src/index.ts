@@ -14,6 +14,11 @@ export function startupApp() {
   defineConfigSchema(moduleName, configSchema);
 }
 
-export const taskListLaunchButton = getAsyncLifecycle(() => import('./launch-button/task-list-launch-button.extension'), options);
+export const taskListLaunchButton = getAsyncLifecycle(
+  () => import('./launch-button/task-list-launch-button.extension'),
+  options,
+);
 
 export const taskListWorkspace = getAsyncLifecycle(() => import('./workspace/task-list.workspace'), options);
+
+export const deleteTaskConfirmationModal = getAsyncLifecycle(() => import('./workspace/delete-task.modal'), options);

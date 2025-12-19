@@ -1,13 +1,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Button, ButtonSet, Layer } from '@carbon/react';
-import { formatDate, isOmrsDateToday, showSnackbar } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Edit } from '@carbon/react/icons';
-import { useTask, deleteTask, toggleTaskCompletion, taskListSWRKey, type Task } from './task-list.resource';
 import { useSWRConfig } from 'swr';
-import styles from './task-details-view.scss';
+import { Button, ButtonSet, Layer } from '@carbon/react';
+import { ArrowLeft, Edit } from '@carbon/react/icons';
+import { formatDate, getCoreTranslation, isOmrsDateToday, showModal, showSnackbar } from '@openmrs/esm-framework';
 import Loader from '../loader/loader.component';
-import { type DueDateType } from './task-list.resource';
+import { useTask, toggleTaskCompletion, taskListSWRKey, type Task, type DueDateType } from './task-list.resource';
+import styles from './task-details-view.scss';
 
 export interface TaskDetailsViewProps {
   patientUuid: string;
@@ -26,33 +25,20 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
   const { t } = useTranslation();
   const { task, isLoading, error, mutate } = useTask(taskUuid);
   const { mutate: mutateList } = useSWRConfig();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleDelete = useCallback(async () => {
-    // TODO: Add a confirmation dialog
+  const handleDelete = useCallback(() => {
     if (!task) {
       return;
     }
 
-    setIsDeleting(true);
-    try {
-      await deleteTask(patientUuid, task);
-      await mutateList(taskListSWRKey(patientUuid));
-      showSnackbar({
-        title: t('taskDeleted', 'Task deleted'),
-        kind: 'success',
-      });
-      onBack();
-    } catch (_error) {
-      showSnackbar({
-        title: t('taskDeleteFailed', 'Unable to delete task'),
-        kind: 'error',
-      });
-    } finally {
-      setIsDeleting(false);
-    }
-  }, [task, mutateList, patientUuid, onBack, t]);
+    const dispose = showModal('delete-task-confirmation-modal', {
+      closeModal: () => dispose(),
+      task,
+      patientUuid,
+      onDeleted: onBack,
+    });
+  }, [task, patientUuid, onBack]);
 
   const handleToggleCompletion = useCallback(
     async (completed: boolean) => {
@@ -152,7 +138,7 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
                 onClick={() => onEdit(task)}
                 className={styles.editButton}
               >
-                {t('edit', 'Edit')}
+                {getCoreTranslation('edit')}
               </Button>
             )}
           </div>
@@ -194,7 +180,7 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
         )}
       </Layer>
       <ButtonSet className={styles.actionButtons}>
-        <Button kind="danger--tertiary" onClick={handleDelete} disabled={isDeleting}>
+        <Button kind="danger--tertiary" onClick={handleDelete}>
           {t('deleteTask', 'Delete task')}
         </Button>
         {!task.completed ? (
