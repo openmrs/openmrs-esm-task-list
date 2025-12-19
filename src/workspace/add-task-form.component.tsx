@@ -343,7 +343,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
   );
 };
 
-function InputWrapper({ children }) {
+function InputWrapper({ children }: { children: React.ReactNode }) {
   const isTablet = useLayoutType() === 'tablet';
   return (
     <Layer level={isTablet ? 1 : 0}>
