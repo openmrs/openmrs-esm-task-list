@@ -1,10 +1,12 @@
-# OpenMRS ESM Template App
+# OpenMRS ESM Task List
 
-![Node.js CI](https://github.com/openmrs/openmrs-esm-task-list/workflows/Node.js%20CI/badge.svg)
+![CI](https://github.com/openmrs/openmrs-esm-task-list/workflows/OpenMRS%20CI/badge.svg)
 
-This frontend module contains the task management features of OpenMRS 3.
+This frontend module provides task management features for OpenMRS 3, allowing healthcare providers to create, view, and manage patient tasks directly from the patient chart.
 
-It requires [openmrs-module-tasks](https://github.com/openmrs/openmrs-module-tasks) to be installed on the server.
+## Requirements
+
+This module requires the [Tasks backend module](https://github.com/openmrs/openmrs-module-tasks) to be installed in your OpenMRS distribution.
 
 ## Running this code
 
@@ -13,4 +15,14 @@ yarn  # to install dependencies
 yarn start  # to run the dev server
 ```
 
-The features of this module all show up in the patient chart. You should notice a new icon in the Action Menu (right sidebar on desktop, bottom bar on tablet).
+## Usage
+
+The task management features appear in the patient chart. You'll see a new icon in the Action Menu (right sidebar on desktop, bottom bar on tablet) that opens the task list workspace.
+
+From the task list, you can:
+
+- View all tasks for the current patient
+- Click on a task to see its details
+- Create new tasks
+- Mark tasks as complete or incomplete
+- Delete tasks
