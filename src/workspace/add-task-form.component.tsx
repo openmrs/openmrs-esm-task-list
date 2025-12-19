@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,22 +10,12 @@ import {
   ContentSwitcher,
   Form,
   FormGroup,
-  FormLabel,
   Layer,
   Switch,
   TextArea,
   TextInput,
 } from '@carbon/react';
-import {
-  showSnackbar,
-  useLayoutType,
-  restBaseUrl,
-  openmrsFetch,
-  useConfig,
-  parseDate,
-  useVisit,
-} from '@openmrs/esm-framework';
-import type { FetchResponse } from '@openmrs/esm-framework';
+import { showSnackbar, useLayoutType, useConfig, parseDate, useVisit } from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
 import {
   useProviderRoles,
@@ -33,9 +23,9 @@ import {
   taskListSWRKey,
   type TaskInput,
   useFetchProviders,
+  useReferenceVisit,
 } from './task-list.resource';
 import { useSWRConfig } from 'swr';
-import useSWR from 'swr';
 
 export interface AddTaskFormProps {
   patientUuid: string;
@@ -47,7 +37,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
 
   const { activeVisit, isLoading: isVisitLoading } = useVisit(patientUuid);
 
-  const { providers, setProviderQuery, isLoading, error } = useFetchProviders();
+  const { providers, setProviderQuery, isLoading: isLoadingProviders, error: providersError } = useFetchProviders();
 
   const { allowAssigningProviderRole } = useConfig();
 
@@ -97,16 +87,11 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
   const selectedDueDateType = watch('dueDateType');
 
   // Fetch current or last visit for NEXT_VISIT
-  const referenceVisitUrl =
-    selectedDueDateType === 'NEXT_VISIT'
-      ? `${restBaseUrl}/visit?patient=${patientUuid}&v=custom:(uuid)&includeInactive=true&limit=1`
-      : null;
   const {
-    data: referenceVisitResponse,
+    data: referenceVisitData,
     isLoading: isReferenceVisitLoading,
     error: referenceVisitError,
-  } = useSWR<FetchResponse<{ results: Array<{ uuid: string }> }>>(referenceVisitUrl, openmrsFetch);
-  const referenceVisitData = referenceVisitResponse?.data;
+  } = useReferenceVisit(selectedDueDateType, patientUuid);
 
   const providerOptions = useMemo(
     () =>
@@ -117,12 +102,6 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
     [providers],
   );
   const providerRoleOptions = useProviderRoles();
-
-  const providerSearchHelper = useMemo(() => t('providerSearchHint', 'Start typing to search for providers'), [t]);
-  const providerRoleSearchHelper = useMemo(
-    () => t('providerRoleSearchHint', 'Start typing to search for provider roles'),
-    [t],
-  );
 
   const handleFormSubmission = async (data: z.infer<typeof schema>) => {
     try {
@@ -268,7 +247,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
                       }
                     }}
                     onInputChange={(input) => setProviderQuery(input)}
-                    helperText={providerSearchHelper}
+                    helperText={t('providerSearchHint', 'Start typing to search for providers')}
                     invalid={Boolean(errors.assignee)}
                     invalidText={errors.assignee?.message}
                   />
