@@ -513,7 +513,8 @@ describe('AddTaskForm', () => {
     it('should pre-populate and disable task name when editing a system task', async () => {
       const systemTaskInstance: Task = {
         ...baseTask,
-        name: 'Medication Reconciliation', // Matches a system task title
+        name: 'Medication Reconciliation',
+        systemTaskUuid: 'system-task-1', // Matches a system task by UUID
       };
 
       mockUseTask.mockReturnValue({

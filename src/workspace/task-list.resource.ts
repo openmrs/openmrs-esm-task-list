@@ -33,6 +33,7 @@ export interface Task {
   createdBy?: string;
   completed: boolean;
   priority?: Priority;
+  systemTaskUuid?: string;
 }
 
 export type TaskDueDate = TaskDueDateDate | TaskDueDateVisit;
@@ -54,6 +55,7 @@ export interface TaskInput {
   rationale?: string;
   assignee?: Assignee;
   priority?: Priority;
+  systemTaskUuid?: string;
 }
 
 export interface FHIRCarePlanResponse {
@@ -176,6 +178,7 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
   const { dueDate, dueDateType } = extractDueDate(detail);
   const priority = extractPriority(detail);
   const createdBy = carePlan?.author?.display;
+  const systemTaskUuid = extractSystemTaskUuid(carePlan.instantiatesCanonical);
 
   const task: Task = {
     uuid: carePlan.id ?? '',
@@ -190,6 +193,7 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
     createdBy,
     completed: status === 'completed',
     priority,
+    systemTaskUuid,
   };
 
   performers.forEach((performer) => {
@@ -206,6 +210,20 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
   });
 
   return task;
+}
+
+function extractSystemTaskUuid(instantiatesCanonical?: string[]): string | undefined {
+  if (!instantiatesCanonical || instantiatesCanonical.length === 0) {
+    return undefined;
+  }
+
+  for (const reference of instantiatesCanonical) {
+    if (reference.startsWith('PlanDefinition/')) {
+      return reference.substring('PlanDefinition/'.length);
+    }
+  }
+
+  return undefined;
 }
 
 function buildCarePlan(patientUuid: string, task: Partial<Task>) {
@@ -292,6 +310,10 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
 
   if (task.uuid) {
     carePlan.id = task.uuid;
+  }
+
+  if (task.systemTaskUuid) {
+    carePlan.instantiatesCanonical = [`PlanDefinition/${task.systemTaskUuid}`];
   }
 
   return carePlan;

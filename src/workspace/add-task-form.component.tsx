@@ -65,11 +65,8 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
 
   const { allowAssigningProviderRole } = useConfig();
 
-  // Fetch system tasks (PlanDefinition resources)
   const { systemTasks, isLoading: isSystemTasksLoading } = useSystemTasks();
-  const hasSystemTasks = systemTasks.length > 0;
 
-  // Track whether a system task is selected vs custom task name
   const [selectedSystemTask, setSelectedSystemTask] = useState<SystemTask | null>(null);
   const [isCustomTaskName, setIsCustomTaskName] = useState(false);
   const [customInputValue, setCustomInputValue] = useState('');
@@ -147,7 +144,10 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
       // Check if the existing task matches a system task
       // If so, set the selected system task state
       if (systemTasks.length > 0) {
-        const matchingSystemTask = systemTasks.find((st) => st.title === existingTask.name);
+        const matchingSystemTask = existingTask.systemTaskUuid
+          ? systemTasks.find((st) => st.uuid === existingTask.systemTaskUuid)
+          : null;
+
         if (matchingSystemTask) {
           setSelectedSystemTask(matchingSystemTask);
           setIsCustomTaskName(false);
@@ -219,6 +219,8 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
           rationale: data.rationale?.trim() || undefined,
           assignee,
           priority: data.priority,
+          // Preserve systemTaskUuid from existing task (cannot be changed during edit)
+          systemTaskUuid: existingTask.systemTaskUuid,
         };
 
         await updateTask(patientUuid, updatedTask);
@@ -238,6 +240,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
           rationale: data.rationale?.trim() || undefined,
           assignee,
           priority: data.priority,
+          systemTaskUuid: selectedSystemTask?.uuid,
         };
 
         await saveTask(patientUuid, payload);
@@ -279,7 +282,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
                 name="taskName"
                 control={control}
                 render={({ field }) =>
-                  hasSystemTasks && !isSystemTasksLoading ? (
+                  systemTasks.length > 0 && !isSystemTasksLoading ? (
                     <div className={selectedSystemTask ? styles.systemTaskSelected : undefined}>
                       <ComboBox
                         key={isEditMode && isCustomTaskName ? `custom-${customInputValue}` : 'system'}
