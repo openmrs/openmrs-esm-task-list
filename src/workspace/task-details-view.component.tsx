@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Button, ButtonSet, Layer } from '@carbon/react';
-import { formatDate, isOmrsDateToday, parseDate, showSnackbar } from '@openmrs/esm-framework';
+import { formatDate, isOmrsDateToday, showSnackbar } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Edit, Information } from '@carbon/react/icons';
 import { useTask, deleteTask, toggleTaskCompletion, taskListSWRKey, type Task } from './task-list.resource';
