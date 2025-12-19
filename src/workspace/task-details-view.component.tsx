@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { Button, ButtonSet, Layer } from '@carbon/react';
 import { formatDate, isOmrsDateToday, showSnackbar } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Edit, Information } from '@carbon/react/icons';
+import { ArrowLeft, Edit } from '@carbon/react/icons';
 import { useTask, deleteTask, toggleTaskCompletion, taskListSWRKey, type Task } from './task-list.resource';
 import { useSWRConfig } from 'swr';
 import styles from './task-details-view.scss';
