@@ -21,7 +21,6 @@ import {
   useLayoutType,
   restBaseUrl,
   openmrsFetch,
-  isDesktop,
   useConfig,
   parseDate,
   useVisit,
