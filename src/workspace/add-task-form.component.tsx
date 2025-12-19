@@ -29,14 +29,11 @@ import {
 import type { FetchResponse } from '@openmrs/esm-framework';
 import styles from './add-task-form.scss';
 import {
-  SelectOption,
   useProviderRoles,
   saveTask,
   taskListSWRKey,
   type TaskInput,
-  type DueDateType,
   useFetchProviders,
-  Task,
 } from './task-list.resource';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
