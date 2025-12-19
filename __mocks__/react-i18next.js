@@ -31,7 +31,30 @@ const renderNodes = (reactNodes) => {
 };
 
 const useMock = [(k) => k, {}];
-useMock.t = (k, o) => (o && o.defaultValue) || (typeof o === 'string' ? o : k);
+useMock.t = (key, defaultValueOrOptions, options) => {
+  // Handle three-parameter case: t(key, defaultValue, options)
+  let defaultValue = defaultValueOrOptions;
+  let interpolationOptions = options;
+  
+  // Handle two-parameter case: t(key, options) where defaultValue might be options
+  if (!interpolationOptions && typeof defaultValueOrOptions === 'object' && defaultValueOrOptions !== null && !defaultValueOrOptions.defaultValue) {
+    interpolationOptions = defaultValueOrOptions;
+    defaultValue = undefined;
+  }
+  
+  // Get the string to interpolate
+  const template = defaultValue || key;
+  
+  // If we have interpolation options and the template has placeholders, interpolate
+  if (interpolationOptions && typeof template === 'string' && template.includes('{{')) {
+    return template.replace(/\{\{(\w+)\}\}/g, (match, varName) => {
+      return interpolationOptions[varName] !== undefined ? String(interpolationOptions[varName]) : match;
+    });
+  }
+  
+  // Fallback to defaultValue or key
+  return defaultValue || key;
+};
 useMock.i18n = {};
 
 module.exports = {
