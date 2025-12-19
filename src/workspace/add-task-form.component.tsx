@@ -10,7 +10,7 @@ import {
   ContentSwitcher,
   Form,
   FormGroup,
-  FormLabel,
+  InlineNotification,
   Layer,
   Switch,
   TextArea,
@@ -39,8 +39,10 @@ import {
   type DueDateType,
   type Priority,
   type Task,
+  type SystemTask,
   useFetchProviders,
   useTask,
+  useSystemTasks,
 } from './task-list.resource';
 import { useSWRConfig } from 'swr';
 import useSWR from 'swr';
@@ -62,6 +64,12 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
   const { providers, setProviderQuery, isLoading, error } = useFetchProviders();
 
   const { allowAssigningProviderRole } = useConfig();
+
+  const { systemTasks, isLoading: isSystemTasksLoading } = useSystemTasks();
+
+  const [selectedSystemTask, setSelectedSystemTask] = useState<SystemTask | null>(null);
+  const [isCustomTaskName, setIsCustomTaskName] = useState(false);
+  const [customInputValue, setCustomInputValue] = useState('');
 
   const optionSchema = z.object({
     id: z.string(),
@@ -132,8 +140,26 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
             : undefined,
         priority: existingTask.priority,
       });
+
+      // Check if the existing task matches a system task
+      // If so, set the selected system task state
+      if (systemTasks.length > 0) {
+        const matchingSystemTask = existingTask.systemTaskUuid
+          ? systemTasks.find((st) => st.uuid === existingTask.systemTaskUuid)
+          : null;
+
+        if (matchingSystemTask) {
+          setSelectedSystemTask(matchingSystemTask);
+          setIsCustomTaskName(false);
+          setCustomInputValue('');
+        } else {
+          setSelectedSystemTask(null);
+          setIsCustomTaskName(true);
+          setCustomInputValue(existingTask.name);
+        }
+      }
     }
-  }, [isEditMode, existingTask, reset]);
+  }, [isEditMode, existingTask, reset, systemTasks]);
 
   const selectedDueDateType = watch('dueDateType');
 
@@ -193,6 +219,8 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
           rationale: data.rationale?.trim() || undefined,
           assignee,
           priority: data.priority,
+          // Preserve systemTaskUuid from existing task (cannot be changed during edit)
+          systemTaskUuid: existingTask.systemTaskUuid,
         };
 
         await updateTask(patientUuid, updatedTask);
@@ -212,6 +240,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
           rationale: data.rationale?.trim() || undefined,
           assignee,
           priority: data.priority,
+          systemTaskUuid: selectedSystemTask?.uuid,
         };
 
         await saveTask(patientUuid, payload);
@@ -237,19 +266,109 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack, editTask
           <div className={styles.formSection}>
             <h5 className={styles.formSectionHeader}>{t('task', 'Task')}</h5>
             <InputWrapper>
+              {/* Show info banner when editing a system task */}
+              {isEditMode && selectedSystemTask && (
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  title={t('systemTaskEditTitle', "You're editing a system task")}
+                  subtitle={t('systemTaskEditSubtitle', 'Task name cannot be changed.')}
+                  className={styles.systemTaskNotification}
+                />
+              )}
+
               <Controller
                 name="taskName"
                 control={control}
-                render={({ field }) => (
-                  <TextInput
-                    id="taskName"
-                    labelText={t('taskNameLabel', 'Task name')}
-                    placeholder={t('taskNamePlaceholder', 'Enter task name')}
-                    invalid={Boolean(errors.taskName)}
-                    invalidText={errors.taskName?.message ? t('taskNameRequired', 'Task name is required') : undefined}
-                    {...field}
-                  />
-                )}
+                render={({ field }) =>
+                  systemTasks.length > 0 && !isSystemTasksLoading ? (
+                    <div className={selectedSystemTask ? styles.systemTaskSelected : undefined}>
+                      <ComboBox
+                        key={isEditMode && isCustomTaskName ? `custom-${customInputValue}` : 'system'}
+                        id="taskName"
+                        titleText={t('taskNameLabel', 'Task name')}
+                        placeholder={t('taskNamePlaceholder', 'Enter or select task name')}
+                        items={systemTasks}
+                        itemToString={(item: SystemTask | null) => item?.title ?? ''}
+                        selectedItem={selectedSystemTask}
+                        initialSelectedItem={
+                          isEditMode && isCustomTaskName
+                            ? ({ uuid: 'custom', name: 'custom', title: customInputValue } as SystemTask)
+                            : undefined
+                        }
+                        disabled={isEditMode && !!selectedSystemTask}
+                        allowCustomValue
+                        onChange={({ selectedItem, inputValue }) => {
+                          if (selectedItem) {
+                            // A system task was selected from the dropdown
+                            setSelectedSystemTask(selectedItem);
+                            setIsCustomTaskName(false);
+                            setCustomInputValue('');
+                            field.onChange(selectedItem.title);
+
+                            // Apply system task defaults
+                            if (selectedItem.priority) {
+                              setValue('priority', selectedItem.priority);
+                            }
+                            if (selectedItem.rationale) {
+                              setValue('rationale', selectedItem.rationale);
+                            }
+                            if (selectedItem.defaultAssigneeRoleUuid) {
+                              setValue('assigneeRole', {
+                                id: selectedItem.defaultAssigneeRoleUuid,
+                                label: selectedItem.defaultAssigneeRoleDisplay,
+                              });
+                              setValue('assignee', undefined);
+                            }
+                          } else if (inputValue !== undefined) {
+                            // Custom value entered
+                            setSelectedSystemTask(null);
+                            setIsCustomTaskName(inputValue.length > 0);
+                            setCustomInputValue(inputValue);
+                            field.onChange(inputValue);
+                          }
+                        }}
+                        onInputChange={(inputValue) => {
+                          // When typing, check if it still matches a system task
+                          const matchingTask = systemTasks.find(
+                            (st) => st.title.toLowerCase() === inputValue?.toLowerCase(),
+                          );
+                          if (!matchingTask) {
+                            setSelectedSystemTask(null);
+                            setIsCustomTaskName(inputValue?.length > 0);
+                            setCustomInputValue(inputValue ?? '');
+                            field.onChange(inputValue ?? '');
+                          }
+                        }}
+                        invalid={Boolean(errors.taskName)}
+                        invalidText={
+                          errors.taskName?.message ? t('taskNameRequired', 'Task name is required') : undefined
+                        }
+                      />
+                      {isCustomTaskName && !selectedSystemTask && (
+                        <InlineNotification
+                          kind="info"
+                          lowContrast
+                          hideCloseButton
+                          title={t('customTaskName', 'Custom task')}
+                          className={styles.customTaskNotification}
+                        />
+                      )}
+                    </div>
+                  ) : (
+                    <TextInput
+                      id="taskName"
+                      labelText={t('taskNameLabel', 'Task name')}
+                      placeholder={t('taskNamePlaceholder', 'Enter task name')}
+                      invalid={Boolean(errors.taskName)}
+                      invalidText={
+                        errors.taskName?.message ? t('taskNameRequired', 'Task name is required') : undefined
+                      }
+                      {...field}
+                    />
+                  )
+                }
               />
             </InputWrapper>
 

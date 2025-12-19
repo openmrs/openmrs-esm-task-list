@@ -2,7 +2,16 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddTaskForm from './add-task-form.component';
-import { useTask, saveTask, updateTask, useFetchProviders, useProviderRoles, type Task } from './task-list.resource';
+import {
+  useTask,
+  saveTask,
+  updateTask,
+  useFetchProviders,
+  useProviderRoles,
+  useSystemTasks,
+  type Task,
+  type SystemTask,
+} from './task-list.resource';
 import { showSnackbar, useVisit, useConfig, useLayoutType } from '@openmrs/esm-framework';
 
 // Mock ResizeObserver for Carbon components
@@ -12,6 +21,9 @@ global.ResizeObserver = jest.fn().mockImplementation(() => ({
   disconnect: jest.fn(),
 }));
 
+// Mock scrollIntoView for Carbon ComboBox
+Element.prototype.scrollIntoView = jest.fn();
+
 jest.mock('./task-list.resource', () => ({
   useTask: jest.fn(),
   saveTask: jest.fn(),
@@ -19,6 +31,7 @@ jest.mock('./task-list.resource', () => ({
   taskListSWRKey: jest.fn((patientUuid) => `tasks-${patientUuid}`),
   useFetchProviders: jest.fn(),
   useProviderRoles: jest.fn(),
+  useSystemTasks: jest.fn(),
 }));
 
 jest.mock('@openmrs/esm-framework', () => ({
@@ -58,6 +71,7 @@ const mockSaveTask = saveTask as jest.MockedFunction<typeof saveTask>;
 const mockUpdateTask = updateTask as jest.MockedFunction<typeof updateTask>;
 const mockUseFetchProviders = useFetchProviders as jest.MockedFunction<typeof useFetchProviders>;
 const mockUseProviderRoles = useProviderRoles as jest.MockedFunction<typeof useProviderRoles>;
+const mockUseSystemTasks = useSystemTasks as jest.MockedFunction<typeof useSystemTasks>;
 const mockShowSnackbar = showSnackbar as jest.MockedFunction<typeof showSnackbar>;
 
 describe('AddTaskForm', () => {
@@ -103,6 +117,12 @@ describe('AddTaskForm', () => {
     });
 
     mockUseProviderRoles.mockReturnValue([]);
+
+    mockUseSystemTasks.mockReturnValue({
+      systemTasks: [],
+      isLoading: false,
+      error: null,
+    });
 
     mockSaveTask.mockResolvedValue({} as any);
     mockUpdateTask.mockResolvedValue({} as any);
@@ -313,6 +333,257 @@ describe('AddTaskForm', () => {
             dueDate: expect.objectContaining({
               type: 'DATE',
             }),
+          }),
+        );
+      });
+    });
+  });
+
+  describe('Create mode with system tasks', () => {
+    const mockSystemTasks: SystemTask[] = [
+      {
+        uuid: 'system-task-1',
+        name: 'med-rec',
+        title: 'Medication Reconciliation',
+        priority: 'high',
+        rationale: 'Ensure medication safety',
+      },
+      {
+        uuid: 'system-task-2',
+        name: 'lab-followup',
+        title: 'Lab Result Follow-up',
+        priority: 'medium',
+      },
+    ];
+
+    it('should show ComboBox with system tasks when system tasks are available', async () => {
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: mockSystemTasks,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} />);
+
+      // Should show a combobox instead of text input
+      const combobox = screen.getByRole('combobox', { name: /task name/i });
+      expect(combobox).toBeInTheDocument();
+    });
+
+    it('should apply system task defaults when selecting a system task', async () => {
+      const user = userEvent.setup();
+
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: mockSystemTasks,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} />);
+
+      // Open the combobox and select a system task
+      const combobox = screen.getByRole('combobox', { name: /task name/i });
+      await user.click(combobox);
+
+      // Select "Medication Reconciliation" from dropdown
+      const option = await screen.findByText('Medication Reconciliation');
+      await user.click(option);
+
+      // Check that the system task title is now in the combobox
+      expect(combobox).toHaveValue('Medication Reconciliation');
+
+      // Check that priority was auto-filled from system task defaults
+      const priorityInput = screen.getByRole('combobox', { name: /priority/i });
+      expect(priorityInput).toHaveValue('high');
+
+      // Check that rationale was auto-filled from system task defaults
+      const rationaleTextarea = screen.getByPlaceholderText(/add a note here/i);
+      expect(rationaleTextarea).toHaveValue('Ensure medication safety');
+    });
+
+    it('should submit task with system task title when system task is selected', async () => {
+      const user = userEvent.setup();
+
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: mockSystemTasks,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} />);
+
+      // Open the combobox and select a system task
+      const combobox = screen.getByRole('combobox', { name: /task name/i });
+      await user.click(combobox);
+
+      const option = await screen.findByText('Medication Reconciliation');
+      await user.click(option);
+
+      // Submit the form
+      const addButton = screen.getByRole('button', { name: /add task/i });
+      await user.click(addButton);
+
+      await waitFor(() => {
+        expect(mockSaveTask).toHaveBeenCalledWith(
+          patientUuid,
+          expect.objectContaining({
+            name: 'Medication Reconciliation',
+            priority: 'high',
+            rationale: 'Ensure medication safety',
+          }),
+        );
+      });
+
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Task added',
+          kind: 'success',
+        }),
+      );
+    });
+
+    it('should show TextInput instead of ComboBox when no system tasks are available', async () => {
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: [],
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} />);
+
+      // Should show a text input for task name (not a combobox)
+      const textInput = screen.getByLabelText(/task name/i);
+      expect(textInput).toBeInTheDocument();
+      expect(textInput.tagName).toBe('INPUT');
+
+      // The task name input should NOT have the combobox role
+      expect(textInput).not.toHaveAttribute('role', 'combobox');
+    });
+  });
+
+  describe('Edit mode with system tasks', () => {
+    const editTaskUuid = 'task-uuid-456';
+
+    const mockSystemTasks: SystemTask[] = [
+      {
+        uuid: 'system-task-1',
+        name: 'med-rec',
+        title: 'Medication Reconciliation',
+        priority: 'high',
+      },
+      {
+        uuid: 'system-task-2',
+        name: 'lab-followup',
+        title: 'Lab Result Follow-up',
+        priority: 'medium',
+      },
+    ];
+
+    it('should pre-populate task name when editing a custom task (not matching any system task)', async () => {
+      const customTask: Task = {
+        ...baseTask,
+        name: 'My Custom Task',
+      };
+
+      mockUseTask.mockReturnValue({
+        task: customTask,
+        isLoading: false,
+        error: null,
+        mutate: jest.fn(),
+      });
+
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: mockSystemTasks,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid={editTaskUuid} />);
+
+      await waitFor(() => {
+        // The task name should be pre-populated with the custom task name
+        const combobox = screen.getByRole('combobox', { name: /task name/i });
+        expect(combobox).toHaveValue('My Custom Task');
+      });
+
+      // Should show the custom task notification since it doesn't match a system task
+      expect(screen.getByText(/custom task/i)).toBeInTheDocument();
+    });
+
+    it('should pre-populate and disable task name when editing a system task', async () => {
+      const systemTaskInstance: Task = {
+        ...baseTask,
+        name: 'Medication Reconciliation',
+        systemTaskUuid: 'system-task-1', // Matches a system task by UUID
+      };
+
+      mockUseTask.mockReturnValue({
+        task: systemTaskInstance,
+        isLoading: false,
+        error: null,
+        mutate: jest.fn(),
+      });
+
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: mockSystemTasks,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid={editTaskUuid} />);
+
+      await waitFor(() => {
+        const combobox = screen.getByRole('combobox', { name: /task name/i });
+        expect(combobox).toHaveValue('Medication Reconciliation');
+        expect(combobox).toBeDisabled();
+      });
+
+      // Should show the system task info banner
+      expect(screen.getByText(/task name cannot be changed/i)).toBeInTheDocument();
+    });
+
+    it('should allow updating other fields when editing a custom task', async () => {
+      const user = userEvent.setup();
+      const customTask: Task = {
+        ...baseTask,
+        name: 'My Custom Task',
+        rationale: 'Original rationale',
+      };
+
+      mockUseTask.mockReturnValue({
+        task: customTask,
+        isLoading: false,
+        error: null,
+        mutate: jest.fn(),
+      });
+
+      mockUseSystemTasks.mockReturnValue({
+        systemTasks: mockSystemTasks,
+        isLoading: false,
+        error: null,
+      });
+
+      render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid={editTaskUuid} />);
+
+      await waitFor(() => {
+        const combobox = screen.getByRole('combobox', { name: /task name/i });
+        expect(combobox).toHaveValue('My Custom Task');
+      });
+
+      // Update the rationale
+      const rationaleTextarea = screen.getByPlaceholderText(/add a note here/i);
+      await user.clear(rationaleTextarea);
+      await user.type(rationaleTextarea, 'Updated rationale');
+
+      const saveButton = screen.getByRole('button', { name: /save task/i });
+      await user.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockUpdateTask).toHaveBeenCalledWith(
+          patientUuid,
+          expect.objectContaining({
+            name: 'My Custom Task',
+            rationale: 'Updated rationale',
           }),
         );
       });
