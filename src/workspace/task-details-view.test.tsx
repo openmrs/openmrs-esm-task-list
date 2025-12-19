@@ -8,9 +8,7 @@ import { formatDate, isOmrsDateToday } from '@openmrs/esm-framework';
 jest.mock('./task-list.resource');
 jest.mock('@openmrs/esm-framework', () => ({
   ...jest.requireActual('@openmrs/esm-framework'),
-  formatDate: jest.fn(),
   isOmrsDateToday: jest.fn(),
-  showSnackbar: jest.fn(),
 }));
 
 jest.mock('swr', () => ({
@@ -31,20 +29,6 @@ const mockIsOmrsDateToday = isOmrsDateToday as jest.MockedFunction<typeof isOmrs
 function setupDateMocks(options: { today: Date }) {
   mockIsOmrsDateToday.mockImplementation((date: Date) => {
     return date.toISOString().split('T')[0] === options.today.toISOString().split('T')[0];
-  });
-  mockFormatDate.mockImplementation((date: Date) => {
-    if (date === undefined || date === null) {
-      return null;
-    }
-
-    const dateStr = date.toISOString().split('T')[0];
-
-    const todayStr = options.today.toISOString().split('T')[0];
-    if (dateStr === todayStr) {
-      return 'Today';
-    }
-
-    return dateStr;
   });
 }
 
@@ -95,7 +79,7 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
 
       expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
       expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/2024-01-20/i)).toBeInTheDocument();
+      expect(screen.getByText(/20 — Jan — 2024/i)).toBeInTheDocument();
     });
 
     it('should display only due date (no scheduling info) when task was created on a different date', () => {
@@ -123,7 +107,7 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
 
       expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
       expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/2024-01-20/i)).toBeInTheDocument();
+      expect(screen.getByText(/20 — Jan — 2024/i)).toBeInTheDocument();
     });
   });
 
@@ -179,7 +163,7 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
 
       render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
 
-      expect(screen.getByText(/on 2024-01-10 for the same visit/i)).toBeInTheDocument();
+      expect(screen.getByText(/on 10-Jan-2024 for the same visit/i)).toBeInTheDocument();
       expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
     });
 
@@ -204,9 +188,9 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
 
       render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
 
-      expect(screen.getByText(/on 2024-01-10 for the same visit/i)).toBeInTheDocument();
+      expect(screen.getByText(/on 10-Jan-2024 for the same visit/i)).toBeInTheDocument();
       expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/2024-01-12/i)).toBeInTheDocument();
+      expect(screen.getByText(/12 — Jan — 2024/i)).toBeInTheDocument();
     });
   });
 
@@ -262,7 +246,7 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
 
       render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
 
-      expect(screen.getByText(/on 2024-01-10 for the following visit/i)).toBeInTheDocument();
+      expect(screen.getByText(/on 10-Jan-2024 for the following visit/i)).toBeInTheDocument();
       expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
     });
 
@@ -287,9 +271,9 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
 
       render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
 
-      expect(screen.getByText(/on 2024-01-10 for the following visit/i)).toBeInTheDocument();
+      expect(screen.getByText(/on 10-Jan-2024 for the following visit/i)).toBeInTheDocument();
       expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/2024-01-18/i)).toBeInTheDocument();
+      expect(screen.getByText(/18 — Jan — 2024/i)).toBeInTheDocument();
     });
   });
 
