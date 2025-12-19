@@ -17,7 +17,7 @@ yarn start  # to run the dev server
 
 ## Usage
 
-The task management features appear in the patient chart. You'll see a new icon in the Action Menu (right sidebar on desktop, bottom bar on tablet) that opens the task list workspace.
+The task management features appear in the O3 Patient Chart. You'll see a new icon in the Action Menu (right sidebar on desktop, bottom bar on tablet) that opens the task list workspace.
 
 From the task list, you can:
 
