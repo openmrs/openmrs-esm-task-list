@@ -1,11 +1,11 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import classNames from 'classnames';
-import { Checkbox, Tile, Tag, Loading, InlineLoading, Layer, ClickableTile } from '@carbon/react';
+import { Checkbox, Tile, Tag, Layer } from '@carbon/react';
 import { formatDate, parseDate, showSnackbar, useLayoutType } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { type Task, useTaskList, toggleTaskCompletion } from './task-list.resource';
 import styles from './task-list-view.scss';
-import { EmptyDataIllustration, EmptyState } from '@openmrs/esm-patient-common-lib';
+import { EmptyDataIllustration } from '@openmrs/esm-patient-common-lib';
 import Loader from '../loader/loader.component';
 
 export interface TaskListViewProps {
@@ -62,9 +62,10 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
       return false;
     }
     const now = new Date();
-    now.setHours(0, 0, 0, 0);
-    dueDate.setHours(0, 0, 0, 0);
-    return dueDate < now;
+    // Create new Date objects for comparison without mutating originals
+    const nowDateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
+    return dueDateOnly < nowDateOnly;
   }, []);
 
   if (isLoading) {

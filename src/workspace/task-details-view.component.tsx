@@ -169,7 +169,7 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
               <div className={styles.detailLabel}>{t('assignedTo', 'Assigned to')}</div>
               <div>{assigneeDisplay}</div>
             </div>
-            {dueDateDisplay.type != 'DATE' && dueDateDisplay.schedulingInfo && (
+            {dueDateDisplay.type !== 'DATE' && dueDateDisplay.schedulingInfo && (
               <div className={styles.detailRow}>
                 <div className={styles.detailLabel}>{t('scheduledInfo', 'Scheduled')}</div>
                 <div>{dueDateDisplay.schedulingInfo}</div>

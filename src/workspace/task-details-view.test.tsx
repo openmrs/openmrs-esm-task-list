@@ -64,7 +64,6 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
     // Default mock for formatDate - return formatted date string
     setupDateMocks({ today: new Date() });
   });
