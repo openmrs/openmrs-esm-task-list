@@ -167,6 +167,18 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
                 <div>{dueDateDisplay.dueDate}</div>
               </div>
             )}
+            {task.priority && (
+              <div className={styles.detailRow}>
+                <div className={styles.detailLabel}>{t('priorityLabel', 'Priority')}</div>
+                <div>
+                  {task.priority === 'high'
+                    ? t('priorityHigh', 'High')
+                    : task.priority === 'medium'
+                      ? t('priorityMedium', 'Medium')
+                      : t('priorityLow', 'Low')}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
