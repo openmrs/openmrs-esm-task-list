@@ -3,7 +3,7 @@ import classNames from 'classnames';
 import { Checkbox, Tile, Tag, Layer } from '@carbon/react';
 import { formatDate, parseDate, showSnackbar, useLayoutType } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
-import { type Task, useTaskList, toggleTaskCompletion } from './task-list.resource';
+import { type Task, useTaskList, setTaskStatusCompleted } from './task-list.resource';
 import styles from './task-list-view.scss';
 import { EmptyDataIllustration } from '@openmrs/esm-patient-common-lib';
 import Loader from '../loader/loader.component';
@@ -39,7 +39,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
     async (task: Task, checked: boolean) => {
       addPendingUpdate(task.uuid);
       try {
-        await toggleTaskCompletion(patientUuid, task, checked);
+        await setTaskStatusCompleted(patientUuid, task, checked);
         await mutate();
       } catch (_error) {
         showSnackbar({

@@ -5,7 +5,7 @@ import { Button, ButtonSet, Layer } from '@carbon/react';
 import { ArrowLeft, Edit } from '@carbon/react/icons';
 import { formatDate, getCoreTranslation, isOmrsDateToday, showModal, showSnackbar } from '@openmrs/esm-framework';
 import Loader from '../loader/loader.component';
-import { useTask, toggleTaskCompletion, taskListSWRKey, type Task, type DueDateType } from './task-list.resource';
+import { useTask, setTaskStatusCompleted, taskListSWRKey, type Task, type DueDateType } from './task-list.resource';
 import styles from './task-details-view.scss';
 
 export interface TaskDetailsViewProps {
@@ -48,7 +48,7 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
 
       setIsUpdating(true);
       try {
-        await toggleTaskCompletion(patientUuid, task, completed);
+        await setTaskStatusCompleted(patientUuid, task, completed);
         await mutate();
         await mutateList(taskListSWRKey(patientUuid));
         showSnackbar({

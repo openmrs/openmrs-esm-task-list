@@ -5,7 +5,6 @@ import {
   type FetchResponse,
   openmrsFetch,
   restBaseUrl,
-  useOpenmrsSWR,
   parseDate,
   useDebounce,
   useConfig,
@@ -35,12 +34,12 @@ export interface Task {
 export type TaskDueDate = TaskDueDateDate | TaskDueDateVisit;
 
 export type TaskDueDateDate = {
-  type: 'DATE';
+  type: Extract<DueDateType, 'DATE'>;
   date: Date;
 };
 
 export type TaskDueDateVisit = {
-  type: 'THIS_VISIT' | 'NEXT_VISIT';
+  type: Extract<DueDateType, 'THIS_VISIT' | 'NEXT_VISIT'>;
   referenceVisitUuid?: string;
   date?: Date;
 };
@@ -131,7 +130,7 @@ export function updateTask(patientUuid: string, task: Task) {
   });
 }
 
-export function toggleTaskCompletion(patientUuid: string, task: Task, completed: boolean) {
+export function setTaskStatusCompleted(patientUuid: string, task: Task, completed: boolean) {
   const status = completed ? 'completed' : task.status && task.status !== 'completed' ? task.status : 'in-progress';
 
   return updateTask(patientUuid, {
