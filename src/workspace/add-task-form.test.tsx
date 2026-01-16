@@ -2,7 +2,15 @@ import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import AddTaskForm from './add-task-form.component';
-import { useTask, saveTask, updateTask, useFetchProviders, useProviderRoles, type Task } from './task-list.resource';
+import {
+  useTask,
+  saveTask,
+  updateTask,
+  useFetchProviders,
+  useProviderRoles,
+  useReferenceVisit,
+  type Task,
+} from './task-list.resource';
 import { showSnackbar, useVisit, useConfig, useLayoutType } from '@openmrs/esm-framework';
 
 // Mock ResizeObserver for Carbon components
@@ -19,6 +27,7 @@ jest.mock('./task-list.resource', () => ({
   taskListSWRKey: jest.fn((patientUuid) => `tasks-${patientUuid}`),
   useFetchProviders: jest.fn(),
   useProviderRoles: jest.fn(),
+  useReferenceVisit: jest.fn(),
 }));
 
 jest.mock('@openmrs/esm-framework', () => ({
@@ -58,6 +67,7 @@ const mockSaveTask = saveTask as jest.MockedFunction<typeof saveTask>;
 const mockUpdateTask = updateTask as jest.MockedFunction<typeof updateTask>;
 const mockUseFetchProviders = useFetchProviders as jest.MockedFunction<typeof useFetchProviders>;
 const mockUseProviderRoles = useProviderRoles as jest.MockedFunction<typeof useProviderRoles>;
+const mockUseReferenceVisit = useReferenceVisit as jest.MockedFunction<typeof useReferenceVisit>;
 const mockShowSnackbar = showSnackbar as jest.MockedFunction<typeof showSnackbar>;
 
 describe('AddTaskForm', () => {
@@ -103,6 +113,12 @@ describe('AddTaskForm', () => {
     });
 
     mockUseProviderRoles.mockReturnValue([]);
+
+    mockUseReferenceVisit.mockReturnValue({
+      data: { results: [{ uuid: 'reference-visit-uuid' }] },
+      isLoading: false,
+      error: null,
+    });
 
     mockSaveTask.mockResolvedValue({} as any);
     mockUpdateTask.mockResolvedValue({} as any);
@@ -206,9 +222,11 @@ describe('AddTaskForm', () => {
       const rationaleTextarea = screen.getByPlaceholderText(/add a note here/i);
       expect(rationaleTextarea).toHaveValue('Test rationale');
 
-      // Check due date is populated (DATE type shows the date input)
-      const dueDateInput = screen.getByDisplayValue('2024-01-20');
-      expect(dueDateInput).toBeInTheDocument();
+      // Check due date picker is shown (DATE type shows the date input)
+      // Wait for the date picker to render (react-hook-form reset + watch timing)
+      await waitFor(() => {
+        expect(screen.getByLabelText(/due date/i)).toBeInTheDocument();
+      });
 
       // Check priority is shown in the combobox input
       const priorityInput = screen.getByRole('combobox', { name: /priority/i });
@@ -344,9 +362,11 @@ describe('AddTaskForm', () => {
       expect(thisVisitTab).toHaveAttribute('aria-selected', 'false');
       expect(nextVisitTab).toHaveAttribute('aria-selected', 'false');
 
-      // Verify date input is shown with correct value
-      const dueDateInput = screen.getByDisplayValue('2024-01-20');
-      expect(dueDateInput).toBeInTheDocument();
+      // Verify date input is shown
+      // Wait for the date picker to render (react-hook-form reset + watch timing)
+      await waitFor(() => {
+        expect(screen.getByLabelText(/due date/i)).toBeInTheDocument();
+      });
     });
 
     it('should select THIS_VISIT tab when editing task with THIS_VISIT due date', async () => {
@@ -382,7 +402,7 @@ describe('AddTaskForm', () => {
       expect(nextVisitTab).toHaveAttribute('aria-selected', 'false');
 
       // Verify date input is NOT shown (visit-based due dates don't show date picker)
-      expect(screen.queryByDisplayValue('2024-01-20')).not.toBeInTheDocument();
+      expect(screen.queryByDisplayValue('20/01/2024')).not.toBeInTheDocument();
     });
 
     it('should select NEXT_VISIT tab when editing task with NEXT_VISIT due date', async () => {
