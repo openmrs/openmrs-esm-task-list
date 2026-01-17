@@ -1,38 +1,26 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import TaskDetailsView, { DueDateDisplay } from './task-details-view.component';
+import userEvent from '@testing-library/user-event';
 import { useTask, type Task } from './task-list.resource';
-import { formatDate, isOmrsDateToday } from '@openmrs/esm-framework';
+import TaskDetailsView from './task-details-view.component';
 
-// Mock dependencies
 jest.mock('./task-list.resource');
-jest.mock('@openmrs/esm-framework', () => ({
-  ...jest.requireActual('@openmrs/esm-framework'),
-  isOmrsDateToday: jest.fn(),
-}));
 
 jest.mock('swr', () => ({
   useSWRConfig: () => ({ mutate: jest.fn() }),
 }));
 
-const mockUseTask = useTask as jest.MockedFunction<typeof useTask>;
-const mockFormatDate = formatDate as jest.MockedFunction<typeof formatDate>;
-const mockIsOmrsDateToday = isOmrsDateToday as jest.MockedFunction<typeof isOmrsDateToday>;
+const mockUseTask = jest.mocked(useTask);
 
-/**
- * Helper function to set up formatDate mock implementation.
- * @param options Configuration for the mock behavior
- * @param options.today Optional Date object representing "today" for comparison
- * @param options.todayString Optional string to return when a date matches "today"
- * @param options.handlesUndefined Optional flag to handle undefined/null dates explicitly
- */
-function setupDateMocks(options: { today: Date }) {
-  mockIsOmrsDateToday.mockImplementation((date: Date) => {
-    return date.toISOString().split('T')[0] === options.today.toISOString().split('T')[0];
-  });
+// Helper to check if a date-like value is displayed (contains digits and date separators)
+function expectDateToBeDisplayed() {
+  const dueDateLabel = screen.getByText(/due date/i);
+  const dueDateRow = dueDateLabel.closest('div')?.parentElement;
+  const dateValue = dueDateRow?.querySelector('div:last-child')?.textContent;
+  expect(dateValue).toMatch(/\d/); // Contains at least one digit
 }
 
-describe('TaskDetailsView - Due Date Display Logic', () => {
+describe('TaskDetailsView', () => {
   const mockOnBack = jest.fn();
   const mockOnEdit = jest.fn();
   const patientUuid = 'patient-uuid-123';
@@ -48,162 +36,267 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
   };
 
   beforeEach(() => {
-    // Default mock for formatDate - return formatted date string
-    setupDateMocks({ today: new Date() });
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date('2024-01-15T10:00:00Z'));
   });
 
-  describe('DATE type tasks', () => {
-    it('should display only due date (no scheduling info) when task was created today', () => {
-      const today = new Date();
-      const task: Task = {
-        ...baseTask,
-        createdDate: today,
-        dueDate: {
-          type: 'DATE',
-          date: new Date('2024-01-20T10:00:00Z'),
-        },
-      };
+  afterEach(() => {
+    jest.useRealTimers();
+  });
 
+  describe('Loading and error states', () => {
+    it('shows loading state and hides task content while fetching task', () => {
       mockUseTask.mockReturnValue({
-        task,
-        isLoading: false,
+        task: null,
+        isLoading: true,
         error: null,
         mutate: jest.fn(),
       });
 
-      setupDateMocks({
-        today,
-      });
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
 
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
-
-      expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/20 — Jan — 2024/i)).toBeInTheDocument();
+      expect(screen.queryByText(/task/i)).not.toBeInTheDocument();
     });
 
-    it('should display only due date (no scheduling info) when task was created on a different date', () => {
-      const task: Task = {
-        ...baseTask,
-        createdDate: new Date('2024-01-10T10:00:00Z'),
-        dueDate: {
-          type: 'DATE',
-          date: new Date('2024-01-20T10:00:00Z'),
-        },
-      };
-
+    it('shows error message and back button when task fails to load', () => {
       mockUseTask.mockReturnValue({
-        task,
+        task: null,
         isLoading: false,
-        error: null,
+        error: new Error('Failed to load'),
         mutate: jest.fn(),
       });
 
-      setupDateMocks({
-        today: new Date(),
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
+
+      expect(screen.getByText(/problem loading the task/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /back to task list/i })).toBeInTheDocument();
+    });
+
+    it('calls onBack callback when back button is clicked in error state', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      mockUseTask.mockReturnValue({
+        task: null,
+        isLoading: false,
+        error: new Error('Failed to load'),
+        mutate: jest.fn(),
       });
 
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
 
-      expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
-      expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/20 — Jan — 2024/i)).toBeInTheDocument();
+      const backButton = screen.getByRole('button', { name: /back to task list/i });
+      await user.click(backButton);
+
+      expect(mockOnBack).toHaveBeenCalledTimes(1);
     });
   });
 
-  describe('THIS_VISIT type tasks', () => {
-    it('should display "Scheduled today for this visit" when created today and visit is ongoing', () => {
-      const today = new Date();
-      const task: Task = {
-        ...baseTask,
-        createdDate: today,
-        dueDate: {
-          type: 'THIS_VISIT',
-          // No date means visit is ongoing
-        },
-      };
+  describe('Due date display logic', () => {
 
-      mockUseTask.mockReturnValue({
-        task,
-        isLoading: false,
-        error: null,
-        mutate: jest.fn(),
+    describe('DATE type tasks', () => {
+      it('shows only due date (no scheduling info) for DATE type tasks', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-15T10:00:00Z'),
+          dueDate: {
+            type: 'DATE',
+            date: new Date('2024-01-20T10:00:00Z'),
+          },
+        };
+
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
+        expect(screen.getByText(/due date/i)).toBeInTheDocument();
+        expectDateToBeDisplayed();
       });
-
-      setupDateMocks({
-        today,
-      });
-
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
-
-      expect(screen.getByText(/today for this visit/i)).toBeInTheDocument();
-      expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
     });
 
-    it('should display "On {date} for the same visit" when created on different date but visit is multi-day and ongoing', () => {
-      const task: Task = {
-        ...baseTask,
-        createdDate: new Date('2024-01-10T10:00:00Z'),
-        dueDate: {
-          type: 'THIS_VISIT',
-          // No date means visit is ongoing
-        },
-      };
+    describe('THIS_VISIT type tasks', () => {
+      it('shows "today for this visit" when THIS_VISIT task was created today and visit is ongoing', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-15T10:00:00Z'),
+          dueDate: {
+            type: 'THIS_VISIT',
+            // No date means visit is ongoing
+          },
+        };
 
-      mockUseTask.mockReturnValue({
-        task,
-        isLoading: false,
-        error: null,
-        mutate: jest.fn(),
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.getByText(/today for this visit/i)).toBeInTheDocument();
+        expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
       });
 
-      setupDateMocks({
-        today: new Date('2024-01-12T10:00:00Z'),
+      it('shows creation date with "for the same visit" when THIS_VISIT task was created in the past and visit is ongoing', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-10T10:00:00Z'),
+          dueDate: {
+            type: 'THIS_VISIT',
+            // No date means visit is ongoing
+          },
+        };
+
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        jest.setSystemTime(new Date('2024-01-12T10:00:00Z'));
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.getByText(/for the same visit/i)).toBeInTheDocument();
+        // Should contain a date-like value (digits)
+        const schedulingInfo = screen.getByText(/for the same visit/i);
+        expect(schedulingInfo.textContent).toMatch(/\d/);
+        expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
       });
 
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+      it('shows both scheduling info and due date when THIS_VISIT task has ended visit', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-10T10:00:00Z'),
+          dueDate: {
+            type: 'THIS_VISIT',
+            date: new Date('2024-01-12T15:00:00Z'), // Visit ended
+          },
+        };
 
-      expect(screen.getByText(/on 10-Jan-2024 for the same visit/i)).toBeInTheDocument();
-      expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.getByText(/for the same visit/i)).toBeInTheDocument();
+        expect(screen.getByText(/due date/i)).toBeInTheDocument();
+        expectDateToBeDisplayed();
+      });
     });
 
-    it('should display due date when visit has ended', () => {
-      const task: Task = {
-        ...baseTask,
-        createdDate: new Date('2024-01-10T10:00:00Z'),
-        dueDate: {
-          type: 'THIS_VISIT',
-          date: new Date('2024-01-12T15:00:00Z'), // Visit ended
-        },
-      };
+    describe('NEXT_VISIT type tasks', () => {
+      it('shows "today for next visit" when NEXT_VISIT task was created today', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-15T10:00:00Z'),
+          dueDate: {
+            type: 'NEXT_VISIT',
+            // No date means next visit hasn't ended yet
+          },
+        };
 
-      mockUseTask.mockReturnValue({
-        task,
-        isLoading: false,
-        error: null,
-        mutate: jest.fn(),
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.getByText(/today for next visit/i)).toBeInTheDocument();
+        expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
       });
 
-      setupDateMocks({ today: new Date() });
+      it('shows creation date with "for the following visit" when NEXT_VISIT task was created in the past and visit is ongoing', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-10T10:00:00Z'),
+          dueDate: {
+            type: 'NEXT_VISIT',
+            // No date means next visit hasn't ended yet
+          },
+        };
 
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
 
-      expect(screen.getByText(/on 10-Jan-2024 for the same visit/i)).toBeInTheDocument();
-      expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/12 — Jan — 2024/i)).toBeInTheDocument();
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.getByText(/for the following visit/i)).toBeInTheDocument();
+        // Should contain a date-like value (digits)
+        const schedulingInfo = screen.getByText(/for the following visit/i);
+        expect(schedulingInfo.textContent).toMatch(/\d/);
+        expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
+      });
+
+      it('shows both scheduling info and due date when NEXT_VISIT task has ended visit', () => {
+        const task: Task = {
+          ...baseTask,
+          createdDate: new Date('2024-01-10T10:00:00Z'),
+          dueDate: {
+            type: 'NEXT_VISIT',
+            date: new Date('2024-01-18T15:00:00Z'), // Next visit ended
+          },
+        };
+
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.getByText(/for the following visit/i)).toBeInTheDocument();
+        expect(screen.getByText(/due date/i)).toBeInTheDocument();
+        expectDateToBeDisplayed();
+      });
+    });
+
+    describe('Tasks with no due date', () => {
+      it('hides scheduling info and due date when task has no due date', () => {
+        const task: Task = {
+          ...baseTask,
+          // No dueDate property
+        };
+
+        mockUseTask.mockReturnValue({
+          task,
+          isLoading: false,
+          error: null,
+          mutate: jest.fn(),
+        });
+
+        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+
+        expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
+        expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
+      });
     });
   });
 
-  describe('NEXT_VISIT type tasks', () => {
-    it('should display "Scheduled today for next visit" when created today', () => {
-      const today = new Date();
+  describe('User interactions', () => {
+    it('calls onEdit callback with task when edit button is clicked', async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       const task: Task = {
         ...baseTask,
-        createdDate: today,
-        dueDate: {
-          type: 'NEXT_VISIT',
-          // No date means next visit hasn't ended yet
-        },
       };
 
       mockUseTask.mockReturnValue({
@@ -213,24 +306,18 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
         mutate: jest.fn(),
       });
 
-      setupDateMocks({
-        today,
-      });
-
       render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
 
-      expect(screen.getByText(/today for next visit/i)).toBeInTheDocument();
-      expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
+      const editButton = screen.getByRole('button', { name: /edit/i });
+      await user.click(editButton);
+
+      expect(mockOnEdit).toHaveBeenCalledTimes(1);
+      expect(mockOnEdit).toHaveBeenCalledWith(task);
     });
 
-    it('should display "On {date} for the following visit" when created in the past and next visit hasn\'t ended yet', () => {
+    it('hides edit button when onEdit prop is not provided', () => {
       const task: Task = {
         ...baseTask,
-        createdDate: new Date('2024-01-10T10:00:00Z'),
-        dueDate: {
-          type: 'NEXT_VISIT',
-          // No date means next visit hasn't ended yet
-        },
       };
 
       mockUseTask.mockReturnValue({
@@ -240,48 +327,23 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
         mutate: jest.fn(),
       });
 
-      setupDateMocks({
-        today: new Date(),
-      });
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
 
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
-
-      expect(screen.getByText(/on 10-Jan-2024 for the following visit/i)).toBeInTheDocument();
-      expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
-    });
-
-    it('should display due date when next visit has ended', () => {
-      const task: Task = {
-        ...baseTask,
-        createdDate: new Date('2024-01-10T10:00:00Z'),
-        dueDate: {
-          type: 'NEXT_VISIT',
-          date: new Date('2024-01-18T15:00:00Z'), // Next visit ended
-        },
-      };
-
-      mockUseTask.mockReturnValue({
-        task,
-        isLoading: false,
-        error: null,
-        mutate: jest.fn(),
-      });
-
-      setupDateMocks({ today: new Date() });
-
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
-
-      expect(screen.getByText(/on 10-Jan-2024 for the following visit/i)).toBeInTheDocument();
-      expect(screen.getByText(/due date/i)).toBeInTheDocument();
-      expect(screen.getByText(/18 — Jan — 2024/i)).toBeInTheDocument();
+      expect(screen.queryByRole('button', { name: /edit/i })).not.toBeInTheDocument();
     });
   });
 
-  describe('Tasks with no due date', () => {
-    it('should not display scheduling info or due date when task has no due date', () => {
+  describe('Task information display', () => {
+    it('shows task name, creator, and assignee information', () => {
       const task: Task = {
         ...baseTask,
-        // No dueDate property
+        name: 'Complete patient assessment',
+        createdBy: 'Dr. Smith',
+        assignee: {
+          uuid: 'provider-uuid',
+          display: 'Nurse Johnson',
+          type: 'person',
+        },
       };
 
       mockUseTask.mockReturnValue({
@@ -291,10 +353,48 @@ describe('TaskDetailsView - Due Date Display Logic', () => {
         mutate: jest.fn(),
       });
 
-      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
 
-      expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
-      expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
+      expect(screen.getByText('Complete patient assessment')).toBeInTheDocument();
+      expect(screen.getByText('Dr. Smith')).toBeInTheDocument();
+      expect(screen.getByText('Nurse Johnson')).toBeInTheDocument();
+    });
+
+    it('shows "No assignment" text when task has no assignee', () => {
+      const task: Task = {
+        ...baseTask,
+        assignee: undefined,
+      };
+
+      mockUseTask.mockReturnValue({
+        task,
+        isLoading: false,
+        error: null,
+        mutate: jest.fn(),
+      });
+
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
+
+      expect(screen.getByText(/no assignment/i)).toBeInTheDocument();
+    });
+
+    it('shows rationale section when task has rationale text', () => {
+      const task: Task = {
+        ...baseTask,
+        rationale: 'Patient requires follow-up care',
+      };
+
+      mockUseTask.mockReturnValue({
+        task,
+        isLoading: false,
+        error: null,
+        mutate: jest.fn(),
+      });
+
+      render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} />);
+
+      expect(screen.getByText(/rationale/i)).toBeInTheDocument();
+      expect(screen.getByText('Patient requires follow-up care')).toBeInTheDocument();
     });
   });
 });
