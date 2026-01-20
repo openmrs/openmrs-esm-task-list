@@ -1,12 +1,11 @@
 import React, { useCallback, useState } from 'react';
 import classNames from 'classnames';
 import { Checkbox, Tile, Tag, Layer } from '@carbon/react';
-import { formatDate, parseDate, showSnackbar, useLayoutType } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
+import { showSnackbar, useLayoutType, EmptyCardIllustration } from '@openmrs/esm-framework';
 import { type Task, useTaskList, setTaskStatusCompleted } from './task-list.resource';
-import styles from './task-list-view.scss';
-import { EmptyDataIllustration } from '@openmrs/esm-patient-common-lib';
 import Loader from '../loader/loader.component';
+import styles from './task-list-view.scss';
 
 export interface TaskListViewProps {
   patientUuid: string;
@@ -81,7 +80,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
       <Layer>
         <Tile className={styles.emptyStateTile}>
           <div className={styles.emptyStateTileContent}>
-            <EmptyDataIllustration />
+            <EmptyCardIllustration />
             <p className={styles.emptyStateContent}>{t('noTasksMessage', 'No tasks to display')}</p>
           </div>
         </Tile>
