@@ -9,7 +9,7 @@ import TaskListView from './task-list-view.component';
 import TaskDetailsView from './task-details-view.component';
 import styles from './task-list.scss';
 
-type View = 'list' | 'form' | 'details';
+type View = 'list' | 'form' | 'details' | 'edit';
 
 const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string }> = ({ patientUuid }) => {
   const { t } = useTranslation();
@@ -26,9 +26,18 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
     setSelectedTaskUuid(null);
   };
 
+  const handleEdit = (task: Task) => {
+    setSelectedTaskUuid(task.uuid);
+    setView('edit');
+  };
+
+  const handleEditComplete = () => {
+    setView('details');
+  };
+
   return (
     <div className={styles.workspaceContainer}>
-      {['form', 'details'].includes(view) && (
+      {['form', 'details', 'edit'].includes(view) && (
         <div className={styles.backToTaskListButton}>
           <Button
             kind="ghost"
@@ -55,7 +64,15 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
         </div>
       )}
       {view === 'details' && selectedTaskUuid && (
-        <TaskDetailsView patientUuid={patientUuid} taskUuid={selectedTaskUuid} onBack={handleBackToList} />
+        <TaskDetailsView
+          patientUuid={patientUuid}
+          taskUuid={selectedTaskUuid}
+          onBack={handleBackToList}
+          onEdit={handleEdit}
+        />
+      )}
+      {view === 'edit' && selectedTaskUuid && (
+        <AddTaskForm patientUuid={patientUuid} onBack={handleEditComplete} editTaskUuid={selectedTaskUuid} />
       )}
     </div>
   );

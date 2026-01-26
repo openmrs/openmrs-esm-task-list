@@ -26,11 +26,11 @@
   "priorityLow": "Low",
   "priorityMedium": "Medium",
   "priorityPlaceholder": "Select priority (optional)",
-  "providerRoleSearchHint": "Start typing to search for provider roles",
   "providerSearchHint": "Start typing to search for providers",
   "rationale": "Rationale",
   "rationaleLabel": "Explain briefly why this task is necessary (optional)",
   "rationalePlaceholder": "Add a note here",
+  "saveTask": "Save task",
   "scheduledInfo": "Scheduled",
   "scheduledOnNextVisit": "On {{date}} for the following visit",
   "scheduledOnThisVisit": "On {{date}} for the same visit",
@@ -46,6 +46,7 @@
   "taskNameLabel": "Task name",
   "taskNamePlaceholder": "Enter task name",
   "taskNameRequired": "Task name is required",
+  "taskUpdated": "Task updated",
   "taskUpdateFailed": "Unable to update task",
   "thisVisit": "This visit"
 }
