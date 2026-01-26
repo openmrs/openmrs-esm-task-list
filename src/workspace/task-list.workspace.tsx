@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
+import { Button } from '@carbon/react';
+import { Add, ArrowLeft } from '@carbon/react/icons';
+import { useTranslation } from 'react-i18next';
+import { type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { type Task } from './task-list.resource';
 import AddTaskForm from './add-task-form.component';
 import TaskListView from './task-list-view.component';
 import TaskDetailsView from './task-details-view.component';
-import { type DefaultPatientWorkspaceProps } from '@openmrs/esm-patient-common-lib';
-import { Button } from '@carbon/react';
-import { Add, ArrowLeft } from '@carbon/react/icons';
 import styles from './task-list.scss';
-import { useTranslation } from 'react-i18next';
-import { type Task } from './task-list.resource';
 
 type View = 'list' | 'form' | 'details';
 
-const TaskListWorkspace: React.FC<DefaultPatientWorkspaceProps> = ({ patientUuid }) => {
+const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string }> = ({ patientUuid }) => {
   const { t } = useTranslation();
   const [view, setView] = useState<View>('list');
   const [selectedTaskUuid, setSelectedTaskUuid] = useState<string | null>(null);
