@@ -30,23 +30,6 @@ jest.mock('./task-list.resource', () => ({
   useReferenceVisit: jest.fn(),
 }));
 
-jest.mock('@openmrs/esm-framework', () => ({
-  ...jest.requireActual('@openmrs/esm-framework'),
-  showSnackbar: jest.fn(),
-  useLayoutType: jest.fn(() => 'desktop'),
-  restBaseUrl: '/ws/rest/v1',
-  openmrsFetch: jest.fn(),
-  useConfig: jest.fn(() => ({ allowAssigningProviderRole: false })),
-  parseDate: jest.fn((date) => (date ? new Date(date) : undefined)),
-  useVisit: jest.fn(() => ({ activeVisit: null, isLoading: false })),
-  getCoreTranslation: jest.fn((key) => {
-    const translations: Record<string, string> = {
-      cancel: 'Cancel',
-    };
-    return translations[key] || key;
-  }),
-}));
-
 jest.mock('swr', () => {
   const mockUseSWR = jest.fn(() => ({ data: null, isLoading: false, error: null }));
   return {
