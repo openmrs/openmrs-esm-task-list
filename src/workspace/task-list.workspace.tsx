@@ -35,6 +35,14 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
     setView('details');
   };
 
+  const handleBackClick = () => {
+    if (view === 'edit') {
+      setView('details');
+      return;
+    }
+    setView('list');
+  };
+
   return (
     <div className={styles.workspaceContainer}>
       {['form', 'details', 'edit'].includes(view) && (
