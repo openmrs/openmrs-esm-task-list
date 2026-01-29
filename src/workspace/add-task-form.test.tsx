@@ -198,7 +198,7 @@ describe('AddTaskForm', () => {
       expect(priorityInput).toHaveValue('high');
 
       // Check assignee is shown in the combobox input
-      const assigneeInput = screen.getByRole('combobox', { name: /assign to provider/i });
+      const assigneeInput = screen.getByRole('combobox', { name: /^assign to provider$/i });
       expect(assigneeInput).toHaveValue('Dr. Test Provider');
     });
 
