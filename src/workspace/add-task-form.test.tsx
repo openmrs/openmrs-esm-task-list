@@ -45,13 +45,14 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
-const mockUseTask = useTask as jest.MockedFunction<typeof useTask>;
-const mockSaveTask = saveTask as jest.MockedFunction<typeof saveTask>;
-const mockUpdateTask = updateTask as jest.MockedFunction<typeof updateTask>;
-const mockUseFetchProviders = useFetchProviders as jest.MockedFunction<typeof useFetchProviders>;
-const mockUseProviderRoles = useProviderRoles as jest.MockedFunction<typeof useProviderRoles>;
-const mockUseReferenceVisit = useReferenceVisit as jest.MockedFunction<typeof useReferenceVisit>;
-const mockShowSnackbar = showSnackbar as jest.MockedFunction<typeof showSnackbar>;
+const mockUseTask = jest.mocked(useTask);
+const mockSaveTask = jest.mocked(saveTask);
+const mockUpdateTask = jest.mocked(updateTask);
+const mockUseFetchProviders = jest.mocked(useFetchProviders);
+const mockUseProviderRoles = jest.mocked(useProviderRoles);
+const mockUseReferenceVisit = jest.mocked(useReferenceVisit);
+const mockShowSnackbar = jest.mocked(showSnackbar);
+const mockUseConfig = jest.mocked(useConfig<Config>);
 
 describe('AddTaskForm', () => {
   const patientUuid = 'patient-uuid-123';
@@ -78,7 +79,9 @@ describe('AddTaskForm', () => {
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    mockUseConfig.mockReturnValue({
+      ...getDefaultsFromConfigSchema(configSchema),
+    });
 
     // Default mocks
     mockUseTask.mockReturnValue({
@@ -439,7 +442,10 @@ describe('AddTaskForm', () => {
         mutate: jest.fn(),
       });
 
-      (useConfig as jest.Mock).mockReturnValue({ allowAssigningProviderRole: true });
+      mockUseConfig.mockReturnValue({
+        ...getDefaultsFromConfigSchema(configSchema),
+        allowAssigningProviderRole: true,
+      });
 
       render(<AddTaskForm patientUuid={patientUuid} onBack={mockOnBack} editTaskUuid="task-uuid-456" />);
 
