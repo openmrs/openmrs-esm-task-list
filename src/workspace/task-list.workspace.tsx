@@ -21,11 +21,6 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
     setView('details');
   };
 
-  const handleBackToList = () => {
-    setView('list');
-    setSelectedTaskUuid(null);
-  };
-
   const handleEdit = (task: Task) => {
     setSelectedTaskUuid(task.uuid);
     setView('edit');
@@ -41,19 +36,23 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
       return;
     }
     setView('list');
+    setSelectedTaskUuid(null);
   };
+
+  const backText =
+    view === 'edit' ? t('backToTaskDetails', 'Back to task details') : t('backToTaskList', 'Back to task list');
 
   return (
     <div className={styles.workspaceContainer}>
       {['form', 'details', 'edit'].includes(view) && (
-        <div className={styles.backToTaskListButton}>
+        <div className={styles.backButton}>
           <Button
             kind="ghost"
             renderIcon={(props) => <ArrowLeft size={16} {...props} />}
-            iconDescription={t('backToTaskList', 'Back to task list')}
-            onClick={() => setView('list')}
+            iconDescription={backText}
+            onClick={() => handleBackClick()}
           >
-            <span>{t('backToTaskList', 'Back to task list')}</span>
+            <span>{backText}</span>
           </Button>
         </div>
       )}
@@ -75,7 +74,7 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
         <TaskDetailsView
           patientUuid={patientUuid}
           taskUuid={selectedTaskUuid}
-          onBack={handleBackToList}
+          onBack={handleBackClick}
           onEdit={handleEdit}
         />
       )}

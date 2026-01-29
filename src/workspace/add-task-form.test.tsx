@@ -11,14 +11,8 @@ import {
   useReferenceVisit,
   type Task,
 } from './task-list.resource';
-import { showSnackbar, useVisit, useConfig, useLayoutType } from '@openmrs/esm-framework';
-
-// Mock ResizeObserver for Carbon components
-global.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}));
+import { getDefaultsFromConfigSchema, showSnackbar, useVisit, useConfig, useLayoutType } from '@openmrs/esm-framework';
+import { configSchema, type Config } from '../config-schema';
 
 jest.mock('./task-list.resource', () => ({
   useTask: jest.fn(),
@@ -28,21 +22,6 @@ jest.mock('./task-list.resource', () => ({
   useFetchProviders: jest.fn(),
   useProviderRoles: jest.fn(),
   useReferenceVisit: jest.fn(),
-}));
-
-jest.mock('swr', () => {
-  const mockUseSWR = jest.fn(() => ({ data: null, isLoading: false, error: null }));
-  return {
-    __esModule: true,
-    default: mockUseSWR,
-    useSWRConfig: () => ({ mutate: jest.fn() }),
-  };
-});
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, fallback: string) => fallback,
-  }),
 }));
 
 const mockUseTask = jest.mocked(useTask);

@@ -14,7 +14,7 @@
   color: $ui-02;
 }
 
-.backToTaskListButton {
+.backButton {
   padding: 0 layout.$spacing-05;
 
   button {
@@ -30,7 +30,7 @@
     span {
       order: 2;
 
-      // Center text vertically within span                                                                                                                                                                                                                                     
+      // Center text vertically within span
       line-height: 2em;
     }
   }
