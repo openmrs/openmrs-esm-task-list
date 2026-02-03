@@ -21,7 +21,9 @@ import {
   useProviderRoles,
   saveTask,
   taskListSWRKey,
+  getPriorityLabel,
   type TaskInput,
+  type Priority,
   useFetchProviders,
   useReferenceVisit,
 } from './task-list.resource';
@@ -56,6 +58,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
       rationale: z.string().optional(),
       assignee: optionSchema.optional(),
       assigneeRole: optionSchema.optional(),
+      priority: z.enum(['high', 'medium', 'low']).optional(),
     })
     .refine((values) => !(values.assignee && values.assigneeRole), {
       message: t('selectSingleAssignee', 'Select either a provider or a provider role, not both'),
@@ -81,6 +84,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
       rationale: '',
       assignee: undefined,
       assigneeRole: undefined,
+      priority: undefined,
     },
   });
 
@@ -126,6 +130,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
           : data.assigneeRole
             ? { uuid: data.assigneeRole.id, display: data.assigneeRole.label, type: 'role' }
             : undefined,
+        priority: data.priority,
       };
 
       await saveTask(patientUuid, payload);
@@ -281,6 +286,37 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
                 />
               </InputWrapper>
             )}
+
+            <InputWrapper>
+              <Controller
+                name="priority"
+                control={control}
+                render={({ field }) => (
+                  <ComboBox
+                    id="priority"
+                    titleText={t('priorityLabel', 'Priority')}
+                    placeholder={t('priorityPlaceholder', 'Select priority (optional)')}
+                    items={[
+                      { id: 'high', label: t('priorityHigh', 'High') },
+                      { id: 'medium', label: t('priorityMedium', 'Medium') },
+                      { id: 'low', label: t('priorityLow', 'Low') },
+                    ]}
+                    itemToString={(item) => item?.label ?? ''}
+                    selectedItem={
+                      field.value
+                        ? {
+                            id: field.value,
+                            label: getPriorityLabel(field.value as Priority, t),
+                          }
+                        : null
+                    }
+                    onChange={({ selectedItem }) => {
+                      field.onChange(selectedItem?.id ?? undefined);
+                    }}
+                  />
+                )}
+              />
+            </InputWrapper>
           </div>
 
           <div className={styles.formSection}>

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import useSWRImmutable from 'swr/immutable';
+import { type TFunction } from 'i18next';
 import {
   type FetchResponse,
   openmrsFetch,
@@ -19,6 +20,17 @@ export interface Assignee {
 
 export type DueDateType = 'THIS_VISIT' | 'NEXT_VISIT' | 'DATE';
 
+export type Priority = 'high' | 'medium' | 'low';
+
+export function getPriorityLabel(priority: Priority, t: TFunction): string {
+  const labels: Record<Priority, string> = {
+    high: t('priorityHigh', 'High'),
+    medium: t('priorityMedium', 'Medium'),
+    low: t('priorityLow', 'Low'),
+  };
+  return labels[priority];
+}
+
 export interface Task {
   uuid: string;
   name: string;
@@ -29,6 +41,7 @@ export interface Task {
   assignee?: Assignee;
   createdBy?: string;
   completed: boolean;
+  priority?: Priority;
 }
 
 export type TaskDueDate = TaskDueDateDate | TaskDueDateVisit;
@@ -49,6 +62,7 @@ export interface TaskInput {
   dueDate?: TaskDueDate;
   rationale?: string;
   assignee?: Assignee;
+  priority?: Priority;
 }
 
 export interface FHIRCarePlanResponse {
@@ -169,6 +183,7 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
 
   const performers = detail?.performer ?? [];
   const { dueDate, dueDateType } = extractDueDate(detail);
+  const priority = extractPriority(detail);
   const createdBy = carePlan?.author?.display;
 
   const task: Task = {
@@ -183,6 +198,7 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
     rationale: carePlan.description ?? undefined,
     createdBy,
     completed: status === 'completed',
+    priority,
   };
 
   performers.forEach((performer) => {
@@ -257,6 +273,14 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
     detail.extension.push({
       url: 'http://openmrs.org/fhir/StructureDefinition/activity-dueKind',
       valueCode: 'date',
+    });
+  }
+
+  // Add priority extension if set
+  if (task.priority) {
+    detail.extension.push({
+      url: 'http://openmrs.org/fhir/StructureDefinition/activity-priority',
+      valueCode: task.priority,
     });
   }
 
@@ -368,6 +392,23 @@ function extractDueDate(detail?: fhir.CarePlanActivityDetail): {
     dueDate: dueDate ? parseDate(dueDate) : undefined,
     dueDateType,
   };
+}
+
+function extractPriority(detail?: fhir.CarePlanActivityDetail): Priority | undefined {
+  if (!detail?.extension) {
+    return undefined;
+  }
+
+  for (const ext of detail.extension) {
+    if (ext.url === 'http://openmrs.org/fhir/StructureDefinition/activity-priority') {
+      const value = (ext as any).valueCode || (ext as any).valueString;
+      if (value === 'high' || value === 'medium' || value === 'low') {
+        return value;
+      }
+    }
+  }
+
+  return undefined;
 }
 
 export function useFetchProviders() {

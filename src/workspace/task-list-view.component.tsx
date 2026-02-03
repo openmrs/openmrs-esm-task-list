@@ -3,7 +3,7 @@ import classNames from 'classnames';
 import { Checkbox, Tile, Tag, Layer } from '@carbon/react';
 import { useTranslation } from 'react-i18next';
 import { showSnackbar, useLayoutType, EmptyCardIllustration } from '@openmrs/esm-framework';
-import { type Task, useTaskList, setTaskStatusCompleted } from './task-list.resource';
+import { type Task, useTaskList, setTaskStatusCompleted, getPriorityLabel } from './task-list.resource';
 import Loader from '../loader/loader.component';
 import styles from './task-list-view.scss';
 
@@ -127,11 +127,21 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
                   {task.rationale && <div className={styles.taskRationalePreview}>{task.rationale}</div>}
                   <div className={styles.taskAssignee}>{assigneeDisplay}</div>
                 </div>
-                {overdue && (
-                  <Tag type="red" size="sm">
-                    {t('overdue', 'Overdue')}
-                  </Tag>
-                )}
+                <div className={styles.taskTags}>
+                  {task.priority && (
+                    <Tag
+                      type={task.priority === 'high' ? 'red' : task.priority === 'medium' ? 'gray' : 'green'}
+                      size="sm"
+                    >
+                      {getPriorityLabel(task.priority, t)}
+                    </Tag>
+                  )}
+                  {overdue && (
+                    <Tag type="red" size="sm">
+                      {t('overdue', 'Overdue')}
+                    </Tag>
+                  )}
+                </div>
               </button>
             </Tile>
           </li>
