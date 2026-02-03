@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import useSWRImmutable from 'swr/immutable';
+import { type TFunction } from 'i18next';
 import {
   type FetchResponse,
   openmrsFetch,
@@ -20,6 +21,15 @@ export interface Assignee {
 export type DueDateType = 'THIS_VISIT' | 'NEXT_VISIT' | 'DATE';
 
 export type Priority = 'high' | 'medium' | 'low';
+
+export function getPriorityLabel(priority: Priority, t: TFunction): string {
+  const labels: Record<Priority, string> = {
+    high: t('priorityHigh', 'High'),
+    medium: t('priorityMedium', 'Medium'),
+    low: t('priorityLow', 'Low'),
+  };
+  return labels[priority];
+}
 
 export interface Task {
   uuid: string;

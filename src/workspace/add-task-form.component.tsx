@@ -21,8 +21,8 @@ import {
   useProviderRoles,
   saveTask,
   taskListSWRKey,
+  getPriorityLabel,
   type TaskInput,
-  type DueDateType,
   type Priority,
   useFetchProviders,
   useReferenceVisit,
@@ -306,10 +306,7 @@ const AddTaskForm: React.FC<AddTaskFormProps> = ({ patientUuid, onBack }) => {
                       field.value
                         ? {
                             id: field.value,
-                            label: t(
-                              `priority${field.value.charAt(0).toUpperCase() + field.value.slice(1)}`,
-                              field.value,
-                            ),
+                            label: getPriorityLabel(field.value as Priority, t),
                           }
                         : null
                     }

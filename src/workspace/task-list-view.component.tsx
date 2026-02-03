@@ -3,7 +3,7 @@ import classNames from 'classnames';
 import { Checkbox, Tile, Tag, Layer } from '@carbon/react';
 import { useTranslation } from 'react-i18next';
 import { showSnackbar, useLayoutType, EmptyCardIllustration } from '@openmrs/esm-framework';
-import { type Task, useTaskList, setTaskStatusCompleted } from './task-list.resource';
+import { type Task, useTaskList, setTaskStatusCompleted, getPriorityLabel } from './task-list.resource';
 import Loader from '../loader/loader.component';
 import styles from './task-list-view.scss';
 
@@ -133,11 +133,7 @@ const TaskListView: React.FC<TaskListViewProps> = ({ patientUuid, onTaskClick })
                       type={task.priority === 'high' ? 'red' : task.priority === 'medium' ? 'gray' : 'green'}
                       size="sm"
                     >
-                      {task.priority === 'high'
-                        ? t('priorityHigh', 'High')
-                        : task.priority === 'medium'
-                          ? t('priorityMedium', 'Medium')
-                          : t('priorityLow', 'Low')}
+                      {getPriorityLabel(task.priority, t)}
                     </Tag>
                   )}
                   {overdue && (

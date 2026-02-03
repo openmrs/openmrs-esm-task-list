@@ -5,7 +5,14 @@ import { Button, ButtonSet, Layer } from '@carbon/react';
 import { ArrowLeft, Edit } from '@carbon/react/icons';
 import { formatDate, getCoreTranslation, isOmrsDateToday, showModal, showSnackbar } from '@openmrs/esm-framework';
 import Loader from '../loader/loader.component';
-import { useTask, setTaskStatusCompleted, taskListSWRKey, type Task, type DueDateType } from './task-list.resource';
+import {
+  useTask,
+  setTaskStatusCompleted,
+  taskListSWRKey,
+  getPriorityLabel,
+  type Task,
+  type DueDateType,
+} from './task-list.resource';
 import styles from './task-details-view.scss';
 
 export interface TaskDetailsViewProps {
@@ -170,13 +177,7 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
             {task.priority && (
               <div className={styles.detailRow}>
                 <div className={styles.detailLabel}>{t('priorityLabel', 'Priority')}</div>
-                <div>
-                  {task.priority === 'high'
-                    ? t('priorityHigh', 'High')
-                    : task.priority === 'medium'
-                      ? t('priorityMedium', 'Medium')
-                      : t('priorityLow', 'Low')}
-                </div>
+                <div>{getPriorityLabel(task.priority, t)}</div>
               </div>
             )}
           </div>
