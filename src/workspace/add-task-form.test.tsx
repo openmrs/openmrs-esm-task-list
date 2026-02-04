@@ -22,6 +22,7 @@ jest.mock('./task-list.resource', () => ({
   useFetchProviders: jest.fn(),
   useProviderRoles: jest.fn(),
   useReferenceVisit: jest.fn(),
+  getPriorityLabel: jest.fn((priority) => priority),
 }));
 
 const mockUseTask = jest.mocked(useTask);
