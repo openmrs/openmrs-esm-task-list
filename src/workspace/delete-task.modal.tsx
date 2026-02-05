@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button, InlineLoading, ModalBody, ModalFooter, ModalHeader } from '@carbon/react';
-import { showSnackbar } from '@openmrs/esm-framework';
+import { getCoreTranslation, showSnackbar } from '@openmrs/esm-framework';
 import { useSWRConfig } from 'swr';
 import { deleteTask, taskListSWRKey, type Task } from './task-list.resource';
 import styles from './delete-task.scss';
@@ -54,13 +54,13 @@ const DeleteTaskModal: React.FC<DeleteTaskModalProps> = ({ closeModal, task, pat
       </ModalBody>
       <ModalFooter>
         <Button kind="secondary" onClick={closeModal}>
-          {t('cancel', 'Cancel')}
+          {getCoreTranslation('cancel')}
         </Button>
         <Button className={styles.deleteButton} kind="danger" onClick={handleDelete} disabled={isDeleting}>
           {isDeleting ? (
             <InlineLoading description={t('deleting', 'Deleting') + '...'} />
           ) : (
-            <span>{t('delete', 'Delete')}</span>
+            <span>{getCoreTranslation('delete')}</span>
           )}
         </Button>
       </ModalFooter>
