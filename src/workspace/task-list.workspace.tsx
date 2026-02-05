@@ -50,7 +50,7 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
             kind="ghost"
             renderIcon={(props) => <ArrowLeft size={16} {...props} />}
             iconDescription={backText}
-            onClick={() => handleBackClick()}
+            onClick={handleBackClick}
           >
             <span>{backText}</span>
           </Button>
