@@ -5,4 +5,5 @@
 export interface CarePlan extends fhir.CarePlan {
   created?: fhir.dateTime;
   author?: fhir.Reference;
+  instantiatesCanonical?: string[];
 }

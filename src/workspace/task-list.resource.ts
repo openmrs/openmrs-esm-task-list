@@ -42,6 +42,7 @@ export interface Task {
   createdBy?: string;
   completed: boolean;
   priority?: Priority;
+  systemTaskUuid?: string;
 }
 
 export type TaskDueDate = TaskDueDateDate | TaskDueDateVisit;
@@ -63,6 +64,7 @@ export interface TaskInput {
   rationale?: string;
   assignee?: Assignee;
   priority?: Priority;
+  systemTaskUuid?: string;
 }
 
 export interface FHIRCarePlanResponse {
@@ -185,6 +187,7 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
   const { dueDate, dueDateType } = extractDueDate(detail);
   const priority = extractPriority(detail);
   const createdBy = carePlan?.author?.display;
+  const systemTaskUuid = extractSystemTaskUuid(carePlan.instantiatesCanonical);
 
   const task: Task = {
     uuid: carePlan.id ?? '',
@@ -199,6 +202,7 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
     createdBy,
     completed: status === 'completed',
     priority,
+    systemTaskUuid,
   };
 
   performers.forEach((performer) => {
@@ -215,6 +219,20 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
   });
 
   return task;
+}
+
+function extractSystemTaskUuid(instantiatesCanonical?: string[]): string | undefined {
+  if (!instantiatesCanonical || instantiatesCanonical.length === 0) {
+    return undefined;
+  }
+
+  for (const reference of instantiatesCanonical) {
+    if (reference.startsWith('PlanDefinition/')) {
+      return reference.substring('PlanDefinition/'.length);
+    }
+  }
+
+  return undefined;
 }
 
 function buildCarePlan(patientUuid: string, task: Partial<Task>) {
@@ -299,6 +317,10 @@ function buildCarePlan(patientUuid: string, task: Partial<Task>) {
 
   if (task.uuid) {
     carePlan.id = task.uuid;
+  }
+
+  if (task.systemTaskUuid) {
+    carePlan.instantiatesCanonical = [`PlanDefinition/${task.systemTaskUuid}`];
   }
 
   return carePlan;
@@ -452,4 +474,97 @@ export function useReferenceVisit(dueDateType: string, patientUuid: string) {
     isLoading: isReferenceVisitLoading,
     error: referenceVisitError,
   };
+}
+
+// PlanDefinition types for system tasks
+export interface PlanDefinition {
+  resourceType: 'PlanDefinition';
+  id: string;
+  name?: string;
+  title?: string;
+  status?: string;
+  description?: string;
+  action?: Array<{
+    title?: string;
+    reason?: Array<{ text?: string }>;
+    participant?: Array<{
+      role?: { coding?: Array<{ code?: string; display?: string }> };
+    }>;
+    extension?: Array<{
+      url: string;
+      valueCode?: string;
+    }>;
+  }>;
+}
+
+export interface FHIRPlanDefinitionBundle {
+  resourceType: 'Bundle';
+  entry?: Array<{
+    resource: PlanDefinition;
+  }>;
+}
+
+export interface SystemTask {
+  uuid: string;
+  name: string;
+  title: string;
+  description?: string;
+  priority?: Priority;
+  defaultAssigneeRoleUuid?: string;
+  defaultAssigneeRoleDisplay?: string;
+  rationale?: string;
+}
+
+const fhirBaseUrl = '/ws/fhir2/R4';
+
+function planDefinitionToSystemTask(pd: PlanDefinition): SystemTask {
+  const action = pd.action?.[0];
+
+  // Extract priority from action extension
+  let priority: Priority | undefined;
+  if (action?.extension) {
+    for (const ext of action.extension) {
+      if (ext.url === 'http://openmrs.org/fhir/StructureDefinition/activity-priority') {
+        const value = ext.valueCode;
+        if (value === 'high' || value === 'medium' || value === 'low') {
+          priority = value;
+        }
+      }
+    }
+  }
+
+  // Extract default assignee role from action participant
+  let defaultAssigneeRoleUuid: string | undefined;
+  let defaultAssigneeRoleDisplay: string | undefined;
+  if (action?.participant?.[0]?.role?.coding?.[0]) {
+    const coding = action.participant[0].role.coding[0];
+    defaultAssigneeRoleUuid = coding.code;
+    defaultAssigneeRoleDisplay = coding.display;
+  }
+
+  // Extract rationale from action reason
+  const rationale = action?.reason?.[0]?.text;
+
+  return {
+    uuid: pd.id,
+    name: pd.name ?? '',
+    title: pd.title ?? pd.name ?? '',
+    description: pd.description,
+    priority,
+    defaultAssigneeRoleUuid,
+    defaultAssigneeRoleDisplay,
+    rationale,
+  };
+}
+
+export function useSystemTasks() {
+  const url = `${fhirBaseUrl}/PlanDefinition?status=active`;
+  const { data, isLoading, error } = useSWRImmutable<FetchResponse<FHIRPlanDefinitionBundle>>(url, openmrsFetch);
+
+  const systemTasks = useMemo(() => {
+    const entries = data?.data?.entry ?? [];
+    return entries.map((entry) => planDefinitionToSystemTask(entry.resource));
+  }, [data]);
+
+  return { systemTasks, isLoading, error };
 }

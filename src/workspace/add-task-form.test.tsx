@@ -14,6 +14,7 @@ import {
 import { getDefaultsFromConfigSchema, showSnackbar, useVisit, useConfig, useLayoutType } from '@openmrs/esm-framework';
 import { configSchema, type Config } from '../config-schema';
 
+const emptySystemTasks: never[] = [];
 jest.mock('./task-list.resource', () => ({
   useTask: jest.fn(),
   saveTask: jest.fn(),
@@ -23,6 +24,7 @@ jest.mock('./task-list.resource', () => ({
   useProviderRoles: jest.fn(),
   useReferenceVisit: jest.fn(),
   getPriorityLabel: jest.fn((priority) => priority),
+  useSystemTasks: jest.fn(() => ({ systemTasks: emptySystemTasks, isLoading: false })),
 }));
 
 const mockUseTask = jest.mocked(useTask);
