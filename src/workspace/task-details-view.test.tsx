@@ -6,10 +6,6 @@ import TaskDetailsView from './task-details-view.component';
 
 jest.mock('./task-list.resource');
 
-jest.mock('swr', () => ({
-  useSWRConfig: () => ({ mutate: jest.fn() }),
-}));
-
 const mockUseTask = jest.mocked(useTask);
 
 // Helper to check if a date-like value is displayed (contains digits and date separators)
@@ -91,7 +87,6 @@ describe('TaskDetailsView', () => {
   });
 
   describe('Due date display logic', () => {
-
     describe('DATE type tasks', () => {
       it('shows only due date (no scheduling info) for DATE type tasks', () => {
         const task: Task = {
@@ -110,7 +105,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
         expect(screen.getByText(/due date/i)).toBeInTheDocument();
@@ -136,7 +133,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.getByText(/today for this visit/i)).toBeInTheDocument();
         expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
@@ -161,7 +160,9 @@ describe('TaskDetailsView', () => {
 
         jest.setSystemTime(new Date('2024-01-12T10:00:00Z'));
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.getByText(/for the same visit/i)).toBeInTheDocument();
         // Should contain a date-like value (digits)
@@ -187,7 +188,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.getByText(/for the same visit/i)).toBeInTheDocument();
         expect(screen.getByText(/due date/i)).toBeInTheDocument();
@@ -213,7 +216,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.getByText(/today for next visit/i)).toBeInTheDocument();
         expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
@@ -236,7 +241,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.getByText(/for the following visit/i)).toBeInTheDocument();
         // Should contain a date-like value (digits)
@@ -262,7 +269,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.getByText(/for the following visit/i)).toBeInTheDocument();
         expect(screen.getByText(/due date/i)).toBeInTheDocument();
@@ -284,7 +293,9 @@ describe('TaskDetailsView', () => {
           mutate: jest.fn(),
         });
 
-        render(<TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />);
+        render(
+          <TaskDetailsView patientUuid={patientUuid} taskUuid={taskUuid} onBack={mockOnBack} onEdit={mockOnEdit} />,
+        );
 
         expect(screen.queryByText(/scheduled/i)).not.toBeInTheDocument();
         expect(screen.queryByText(/due date/i)).not.toBeInTheDocument();
