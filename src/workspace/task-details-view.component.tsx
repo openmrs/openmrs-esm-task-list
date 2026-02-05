@@ -143,7 +143,6 @@ const TaskDetailsView: React.FC<TaskDetailsViewProps> = ({ patientUuid, taskUuid
                 size="sm"
                 renderIcon={(props) => <Edit size={16} {...props} />}
                 onClick={() => onEdit(task)}
-                className={styles.editButton}
               >
                 {getCoreTranslation('edit')}
               </Button>

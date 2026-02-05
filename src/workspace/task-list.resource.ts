@@ -155,7 +155,7 @@ export function setTaskStatusCompleted(patientUuid: string, task: Task, complete
 }
 
 export function useTask(taskUuid: string) {
-  const swrKey = `${carePlanEndpoint}/${taskUuid}`;
+  const swrKey = taskUuid ? `${carePlanEndpoint}/${taskUuid}` : null;
   const { data, isLoading, error, mutate } = useSWR<{ data: CarePlan }>(swrKey, openmrsFetch);
 
   const task = useMemo(() => {
@@ -220,16 +220,14 @@ function createTaskFromCarePlan(carePlan: CarePlan): Task {
 function buildCarePlan(patientUuid: string, task: Partial<Task>) {
   const performer: Array<fhir.Reference> = [];
 
-  if (task.assignee?.uuid) {
-    performer.push({
-      reference: `Practitioner/${task.assignee.uuid}`,
-      display: task.assignee.display,
-    });
-  }
-
   if (task.assignee?.type === 'role' && task.assignee?.uuid) {
     performer.push({
       reference: `PractitionerRole/${task.assignee.uuid}`,
+      display: task.assignee.display,
+    });
+  } else if (task.assignee?.uuid) {
+    performer.push({
+      reference: `Practitioner/${task.assignee.uuid}`,
       display: task.assignee.display,
     });
   }

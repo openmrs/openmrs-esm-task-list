@@ -9,7 +9,7 @@ import TaskListView from './task-list-view.component';
 import TaskDetailsView from './task-details-view.component';
 import styles from './task-list.scss';
 
-type View = 'list' | 'form' | 'details';
+type View = 'list' | 'form' | 'details' | 'edit';
 
 const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string }> = ({ patientUuid }) => {
   const { t } = useTranslation();
@@ -21,22 +21,38 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
     setView('details');
   };
 
-  const handleBackToList = () => {
+  const handleEdit = (task: Task) => {
+    setSelectedTaskUuid(task.uuid);
+    setView('edit');
+  };
+
+  const handleEditComplete = () => {
+    setView('details');
+  };
+
+  const handleBackClick = () => {
+    if (view === 'edit') {
+      setView('details');
+      return;
+    }
     setView('list');
     setSelectedTaskUuid(null);
   };
 
+  const backText =
+    view === 'edit' ? t('backToTaskDetails', 'Back to task details') : t('backToTaskList', 'Back to task list');
+
   return (
     <div className={styles.workspaceContainer}>
-      {['form', 'details'].includes(view) && (
-        <div className={styles.backToTaskListButton}>
+      {['form', 'details', 'edit'].includes(view) && (
+        <div className={styles.backButton}>
           <Button
             kind="ghost"
             renderIcon={(props) => <ArrowLeft size={16} {...props} />}
-            iconDescription={t('backToTaskList', 'Back to task list')}
-            onClick={() => setView('list')}
+            iconDescription={backText}
+            onClick={handleBackClick}
           >
-            <span>{t('backToTaskList', 'Back to task list')}</span>
+            <span>{backText}</span>
           </Button>
         </div>
       )}
@@ -55,7 +71,15 @@ const TaskListWorkspace: React.FC<DefaultWorkspaceProps & { patientUuid: string 
         </div>
       )}
       {view === 'details' && selectedTaskUuid && (
-        <TaskDetailsView patientUuid={patientUuid} taskUuid={selectedTaskUuid} onBack={handleBackToList} />
+        <TaskDetailsView
+          patientUuid={patientUuid}
+          taskUuid={selectedTaskUuid}
+          onBack={handleBackClick}
+          onEdit={handleEdit}
+        />
+      )}
+      {view === 'edit' && selectedTaskUuid && (
+        <AddTaskForm patientUuid={patientUuid} onBack={handleEditComplete} editTaskUuid={selectedTaskUuid} />
       )}
     </div>
   );
