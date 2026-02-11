@@ -10,8 +10,8 @@ on:
       - created
 
 env:
-  ESM_NAME: "@openmrs/esm-task-list"
-  JS_NAME: "openmrs-esm-task-list.js"
+  ESM_NAME: "@openmrs/esm-task-list-app"
+  JS_NAME: "openmrs-esm-task-list-app.js"
 
 jobs:
   build:

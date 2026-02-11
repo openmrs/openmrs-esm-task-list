@@ -1,9 +1,9 @@
 {
-  "name": "@openmrs/esm-task-list",
-  "version": "4.0.1",
+  "name": "@openmrs/esm-task-list-app",
+  "version": "1.0.0",
   "license": "MPL-2.0",
   "description": "An OpenMRS seed application for building microfrontends",
-  "browser": "dist/openmrs-esm-task-list.js",
+  "browser": "dist/openmrs-esm-task-list-app.js",
   "main": "src/index.ts",
   "source": true,
   "scripts": {

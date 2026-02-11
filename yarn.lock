@@ -3598,9 +3598,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@openmrs/esm-task-list@workspace:.":
+"@openmrs/esm-task-list-app@workspace:.":
   version: 0.0.0-use.local
-  resolution: "@openmrs/esm-task-list@workspace:."
+  resolution: "@openmrs/esm-task-list-app@workspace:."
   dependencies:
     "@carbon/react": "npm:^1.83.0"
     "@hookform/resolvers": "npm:^5.2.2"

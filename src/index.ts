@@ -1,7 +1,7 @@
 import { getAsyncLifecycle, defineConfigSchema } from '@openmrs/esm-framework';
 import { configSchema } from './config-schema';
 
-const moduleName = '@openmrs/esm-task-list';
+const moduleName = '@openmrs/esm-task-list-app';
 
 const options = {
   featureName: 'task-list',
