@@ -67,15 +67,14 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Download Artifacts
-        uses: actions/download-artifact@v4
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
           registry-url: 'https://registry.npmjs.org'
       - run: yarn install --immutable
-      - run: yarn config set npmAuthToken "${NODE_AUTH_TOKEN}" &&  yarn npm publish
+      - run: yarn build
+      - run: yarn config set npmAuthToken "${NODE_AUTH_TOKEN}" && yarn npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
 
