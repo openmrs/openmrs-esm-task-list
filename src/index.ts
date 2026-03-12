@@ -19,6 +19,7 @@ export const taskListLaunchButton = getAsyncLifecycle(
   options,
 );
 
+// t('taskListWorkspaceTitle', 'Task List')
 export const taskListWorkspace = getAsyncLifecycle(() => import('./workspace/task-list.workspace'), options);
 
 export const deleteTaskConfirmationModal = getAsyncLifecycle(() => import('./workspace/delete-task.modal'), options);
