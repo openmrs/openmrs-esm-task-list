@@ -4,25 +4,25 @@
     "tasks": ">=1.0.0-SNAPSHOT",
     "webservices.rest": ">=2.2.0"
   },
-  "extensions": [
-    {
-      "name": "task-list-launch-button",
-      "component": "taskListLaunchButton",
-      "slot": "action-menu-patient-chart-items-slot"
-    }
-  ],
   "modals": [
     {
       "name": "delete-task-confirmation-modal",
       "component": "deleteTaskConfirmationModal"
     }
   ],
-  "workspaces": [
+  "workspaces2": [
     {
       "name": "task-list",
-      "title": "Task List",
       "component": "taskListWorkspace",
-      "type": "task-list"
+      "window": "task-list"
+    }
+  ],
+  "workspaceWindows2": [
+    {
+      "name": "task-list",
+      "group": "patient-chart",
+      "icon": "taskListLaunchButton",
+      "order": 3
     }
   ]
 }
