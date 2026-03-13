@@ -25,7 +25,7 @@ export class PatientChartPage {
   /** Click the "Task list" button in the action menu to open the workspace. */
   async openTaskListWorkspace() {
     await this.page.getByRole('button', { name: /task list/i }).click();
-    await expect(this.page.getByText(/task list/i)).toBeVisible();
+    await expect(this.page.getByRole('button', { name: /add task/i })).toBeVisible();
   }
 
   /** Click "Add Task" inside the workspace. */
@@ -78,6 +78,6 @@ export class PatientChartPage {
 
   /** Confirm deletion in the confirmation modal. */
   async confirmDeleteTask() {
-    await this.page.getByRole('button', { name: /^delete$/i }).click();
+    await this.page.getByRole('dialog').getByRole('button', { name: /^delete$/i }).click();
   }
 }

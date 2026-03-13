@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test';
 import { test } from '../core';
 import { PatientChartPage } from '../pages';
-import { createTask, deleteTask, type CreatedTask } from '../commands';
+import { createTask, type CreatedTask } from '../commands';
 
 test.describe('Task List workspace', () => {
   test('Opens the task list workspace and shows an empty state', async ({ page, patient }) => {
@@ -95,13 +95,11 @@ test.describe('Task List workspace', () => {
     });
 
     await test.step('And I click the task checkbox to mark it complete', async () => {
-      const checkbox = page.locator(`#task-${createdTask.id}`);
-      await checkbox.click();
+      await page.locator(`label[for="task-${createdTask.id}"]`).click();
     });
 
     await test.step('Then the task should be visually marked as completed', async () => {
-      const checkbox = page.locator(`#task-${createdTask.id}`);
-      await expect(checkbox).toBeChecked();
+      await expect(page.locator(`#task-${createdTask.id}`)).toBeChecked();
     });
   });
 
