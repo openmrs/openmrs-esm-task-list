@@ -12,6 +12,9 @@ on:
 env:
   ESM_NAME: "@openmrs/esm-task-list-app"
   JS_NAME: "openmrs-esm-task-list-app.js"
+  TURBO_API: 'http://127.0.0.1:9080'
+  TURBO_TOKEN: 'turbo-token'
+  TURBO_TEAM: ${{ github.repository_owner }}
 
 jobs:
   build:
@@ -24,8 +27,14 @@ jobs:
         with:
           node-version: 22
       - run: yarn install --immutable
+      - name: 🚀 Setup local cache server for Turborepo
+        uses: felixmosh/turborepo-gh-artifacts@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          server-token: ${{ env.TURBO_TOKEN }}
       - run: yarn verify
-      - run: yarn build
+      - run: yarn turbo build
+
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -50,7 +59,12 @@ jobs:
           registry-url: "https://registry.npmjs.org"
       - run: yarn install --immutable
       - run: yarn version "$(node -e "console.log(require('semver').inc(require('./package.json').version, 'patch'))")-pre.${{ github.run_number }}"
-      - run: yarn build
+      - name: 🚀 Setup local cache server for Turborepo
+        uses: felixmosh/turborepo-gh-artifacts@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          server-token: ${{ env.TURBO_TOKEN }}
+      - run: yarn turbo build
       - run: git config user.email "info@openmrs.org" && git config user.name "OpenMRS CI"
       - run: git add . && git commit -m "Prerelease version" --no-verify
       - run: yarn config set npmAuthToken "${NODE_AUTH_TOKEN}" && yarn npm publish --access public --tag next
@@ -62,6 +76,7 @@ jobs:
           name: dist
           path: |
             dist
+          overwrite: true
 
   release:
     runs-on: ubuntu-latest
@@ -78,7 +93,12 @@ jobs:
           node-version: 22
           registry-url: 'https://registry.npmjs.org'
       - run: yarn install --immutable
-      - run: yarn build
+      - name: 🚀 Setup local cache server for Turborepo
+        uses: felixmosh/turborepo-gh-artifacts@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          server-token: ${{ env.TURBO_TOKEN }}
+      - run: yarn turbo build
       - run: yarn config set npmAuthToken "${NODE_AUTH_TOKEN}" && yarn npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
