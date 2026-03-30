@@ -1,0 +1,8 @@
+[o:openmrs:p:openmrs3:r:openmrs-esm-task-list]
+file_filter            = openmrs-esm-task-list/translations/<lang>.json
+source_file            = openmrs-esm-task-list/translations/en.json
+source_lang            = en
+type                   = KEYVALUEJSON
+replace_edited_strings = false
+keep_translations      = false
+resource_name          = openmrs-esm-task-list
