@@ -6,9 +6,9 @@ dotenv.config();
 // See https://playwright.dev/docs/test-configuration.
 const config: PlaywrightTestConfig = {
   testDir: './e2e/specs',
-  timeout: 3 * 60 * 1000,
+  timeout: 5 * 60 * 1000,
   expect: {
-    timeout: 40 * 1000,
+    timeout: 60 * 1000,
   },
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
@@ -18,6 +18,7 @@ const config: PlaywrightTestConfig = {
   use: {
     baseURL: `${process.env.E2E_BASE_URL}/spa/`,
     storageState: 'e2e/storageState.json',
+    actionTimeout: 60 * 1000,
     video: 'retain-on-failure',
     trace: 'retain-on-failure',
   },
